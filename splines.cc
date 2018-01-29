@@ -1,40 +1,28 @@
-#include "tensorflow/core/framework/op.h"
-#include "tensorflow/core/framework/shape_inference.h"
-#include "tensorflow/core/framework/op_kernel.h"
-
-#include <iostream>
-#include <cmath>
-
 #include "splines.h"
-
 REGISTER_OP("SplineGrid")
     .Input("positions: float32")
     .Input("coefficients: float32")
     .Output("interpolation: float32");
+
+REGISTER_OP("SplineGridGradient")
+    .Input("positions: float32")
+    .Input("coeff_shape: int32")
+    .Output("indices: int32")
+    .Output("values: float32");
 
 
 
 
 using namespace tensorflow;
 
-using CPUDevice = Eigen::ThreadPoolDevice;
-using GPUDevice = Eigen::GpuDevice;
-
-
 template<typename Device>
 class SplineGridOp : public OpKernel {
  public:
   explicit SplineGridOp(OpKernelConstruction* context) : OpKernel(context) {}
 
-
-  float kernel(float x) {
-    return exp(-x*x);
-  }
-  
   void Compute(OpKernelContext* context) override {
     const Tensor& positions = context->input(0);
     const Tensor& coefficients = context->input(1);
-
 
     
     TensorShape shape = positions.shape();
@@ -56,21 +44,48 @@ class SplineGridOp : public OpKernel {
     int NCHAN = coefficients.dim_size(coefficients.dims()-1);
     int N = positions_flat.size()/NDIMS;
 
-    /*SplineGridFunctor<Device>()(...);*/
-         
+    Grid grid;
+    for(int i=0; i<NDIMS; i++) {
+      grid.K.push_back(3);
+      grid.dims.push_back(coefficients.dim_size(i));
+    }
+    grid.channels = NCHAN;
+    auto start = std::chrono::high_resolution_clock::now();
+    SplineGridFunctor<Device>()(context->eigen_device<Device>(),
+				grid,N,
+				positions_flat.data(),
+				coefficients_flat.data(),
+				interpolation_flat.data());
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish-start;
+    std::cout << "Computation took: " << elapsed.count() << " s" << std::endl;
   }
-  
+
 };
 
-REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<CPUDevice>);
-//REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<GPUDevice>);
-// Register the GPU kernels.
-//#ifdef GOOGLE_CUDA
-//#define REGISTER_GPU(T)					 \
-  /* Declare explicit instantiations in kernel_example.cu.cc. */ \
-  extern template ExampleFunctor<GPUDevice, float>;              \
-  REGISTER_KERNEL_BUILDER(                                       \
-      Name("Example").Device(DEVICE_GPU).TypeConstraint<T>("T"), \
-      ExampleOp<GPUDevice, T>);
 
-//#endif  // GOOGLE_CUDA
+
+template<typename Device>
+class SplineGridGradientOp : public OpKernel {
+ public:
+  explicit SplineGridGradientOp(OpKernelConstruction* context) : OpKernel(context) {}
+
+  void Compute(OpKernelContext* context) override {
+    const Tensor& positions = context->input(0);
+    const Tensor& coeff_shape = context->input(1);
+    
+    Tensor* indices = NULL;
+    Tensor* values = NULL;
+    OP_REQUIRES_OK(context, context->allocate_output(0, coeff_shape,
+                                                     &indices));
+
+
+  }
+
+};
+
+
+REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<Eigen::ThreadPoolDevice>);
+REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<Eigen::GpuDevice>);
+REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_CPU), SplineGridGradientOp<Eigen::ThreadPoolDevice>);
+//REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_GPU), SplineGridGradientOp<Eigen::GpuDevice>);
