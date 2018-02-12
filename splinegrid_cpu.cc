@@ -74,7 +74,5 @@ struct SplineGridFunctor<Eigen::ThreadPoolDevice, T> {
 
 
 
-
-
 template struct SplineGridFunctor<Eigen::ThreadPoolDevice, float>;
 

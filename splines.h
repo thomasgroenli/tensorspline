@@ -40,6 +40,6 @@ struct SplineGridFunctor {
 
 template<typename Device, typename T=float>
 struct SplineGridGradientFunctor {
-  void operator()(const Device& d, const Grid &, int, const float *, const float *, float *);
+  void operator()(const Device& d, const Grid &, int, const float *, const float *, int *, float *);
 };
 
