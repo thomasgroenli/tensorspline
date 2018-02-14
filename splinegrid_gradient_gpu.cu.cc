@@ -3,7 +3,7 @@
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 #define CUDART_NAN_F            __int_as_float(0x7fffffff)
-#define THREADS 128
+#define THREADS 64
 
 //GPU specialization of actual computation.
 
@@ -64,14 +64,14 @@ __global__ void spline_grid_gradient_kernel_gpu(int N, int ndims, int n_neigh, i
       Wij = 1;
       for(int k=ndims-1; k>=0; k--) {
 	for(int l=0; l<channels; l++) {
-	  indices[l*N*n_neigh*(ndims+1)+i*n_neigh*(ndims+1)+j*(ndims+1)+k] = idx[blockDim.x*k]+reduce%(K[k]+1);
+	  indices[i*n_neigh*channels*(ndims+1)+j*channels*(ndims+1)+l*(ndims+1)+k] = idx[blockDim.x*k]+reduce%(K[k]+1);
 	}
 	Wij *= kernel_gpu2(shift[blockDim.x*k]+1-reduce%(K[k]+1),K[k]);
 	reduce/=K[k]+1;
       }
       for(int k=0; k<channels; k++) {
-	indices[k*N*n_neigh*(ndims+1)+i*n_neigh*(ndims+1)+j*(ndims+1)+ndims] = k;
-	values[k*N*n_neigh+i*n_neigh+j] = Wij*grad[i*channels+k];
+	indices[i*n_neigh*channels*(ndims+1)+j*channels*(ndims+1)+k*(ndims+1)+ndims] = k;
+	values[i*n_neigh*channels+j*channels+k] = Wij*grad[i*channels+k];
       }
     }
   }

@@ -3,7 +3,7 @@ TF_NSYNC=$(TF_INC)/external/nsync/public
 TF_LIB=-L/home/thomg/miniconda3/lib/python3.6/site-packages/tensorflow
 
 
-FLAGS=-O2 -D_GLIBCXX_USE_CXX11_ABI=0
+FLAGS=-O3 -D_GLIBCXX_USE_CXX11_ABI=0
 
 
 all: build test Makefile
@@ -12,10 +12,10 @@ build: splines.so
 
 
 splinegrid_gpu.cu.a: splinegrid_gpu.cu.cc splines.h
-	nvcc -std=c++11 --expt-relaxed-constexpr --gpu-architecture=sm_52 -c -o splinegrid_gpu.cu.a splinegrid_gpu.cu.cc $(TF_INC) $(TF_NSYNC) -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC
+	nvcc -std=c++11 --expt-relaxed-constexpr --gpu-architecture=sm_52 -c -o splinegrid_gpu.cu.a splinegrid_gpu.cu.cc $(TF_INC) $(TF_NSYNC) -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC $(FLAGS)
 
 splinegrid_gradient_gpu.cu.a: splinegrid_gradient_gpu.cu.cc splines.h
-	nvcc -std=c++11 --expt-relaxed-constexpr --gpu-architecture=sm_52 -c -o splinegrid_gradient_gpu.cu.a splinegrid_gradient_gpu.cu.cc $(TF_INC) $(TF_NSYNC) -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC
+	nvcc -std=c++11 --expt-relaxed-constexpr --gpu-architecture=sm_52 -c -o splinegrid_gradient_gpu.cu.a splinegrid_gradient_gpu.cu.cc $(TF_INC) $(TF_NSYNC) -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC $(FLAGS)
 
 
 splinegrid_cpu.a: splinegrid_cpu.cc splines.h

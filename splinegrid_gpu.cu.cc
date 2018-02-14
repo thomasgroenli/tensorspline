@@ -3,7 +3,7 @@
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
 #define CUDART_NAN_F            __int_as_float(0x7fffffff)
-#define THREADS 128
+#define THREADS 64
 
 //GPU specialization of actual computation.
 

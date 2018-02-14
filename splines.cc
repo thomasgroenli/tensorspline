@@ -21,7 +21,6 @@ class SplineGridOp : public OpKernel {
   explicit SplineGridOp(OpKernelConstruction* context) : OpKernel(context) {}
 
   void Compute(OpKernelContext* context) override {
-    std::cout << "Hello from computation" << std::endl;
     const Tensor& positions = context->input(0);
     const Tensor& coefficients = context->input(1);
 
@@ -102,9 +101,9 @@ public:
     Tensor* indices = NULL;
     Tensor* values = NULL;
 
-    OP_REQUIRES_OK(context, context->allocate_output(0, {NCHAN*N*n_neigh,NDIMS+1},
+    OP_REQUIRES_OK(context, context->allocate_output(0, {N*n_neigh*NCHAN,NDIMS+1},
                                                      &indices));
-    OP_REQUIRES_OK(context, context->allocate_output(1, {NCHAN*N*n_neigh},
+    OP_REQUIRES_OK(context, context->allocate_output(1, {N*n_neigh*NCHAN},
 						     &values));
 
 

@@ -43,7 +43,6 @@ void spline_grid_kernel_cpu(int N, int ndims, int n_neigh, int channels, int *gr
 	  Wij *= kernel_cpu(shift[k]+1-reduce%(K[k]+1),K[k]);
 	  reduce/=K[k]+1;
 	}
-	
 	for(int k=0; k<channels; k++) {
 	  channel_sum[k] += Wij*coefficients[channels*flat+k];
 	}
