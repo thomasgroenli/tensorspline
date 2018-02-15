@@ -99,18 +99,16 @@ struct SplineGridGradientFunctor<Eigen::GpuDevice, T> {
     std::vector<int> dx = grid.dx;
 
     int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr;
-    
-    cudaMallocManaged(&grid_dim_ptr, ndims*sizeof(int));
-    cudaMallocManaged(&strides_ptr, ndims*sizeof(int));
-    cudaMallocManaged(&K_ptr, ndims*sizeof(int));
-    cudaMallocManaged(&dx_ptr, ndims*sizeof(int));
-    for(int i=0; i<ndims; i++) {
-      grid_dim_ptr[i] = grid_dim[i];
-      strides_ptr[i] = strides[i];
-      K_ptr[i] = K[i];
-      dx_ptr[i] = dx[i];
-    }
 
+    cudaMalloc(&grid_dim_ptr, ndims*sizeof(int));
+    cudaMalloc(&strides_ptr, ndims*sizeof(int));
+    cudaMalloc(&K_ptr, ndims*sizeof(int));
+    cudaMalloc(&dx_ptr, ndims*sizeof(int));
+
+    cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(strides_ptr, strides.data(), ndims*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(K_ptr, K.data(), ndims*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dx_ptr, dx.data(), ndims*sizeof(int), cudaMemcpyHostToDevice);
 
     // Compute shared memory size
     int shared_size = 4*ndims*sizeof(int);

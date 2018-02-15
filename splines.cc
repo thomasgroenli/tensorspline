@@ -31,15 +31,15 @@ public:
   }
 
   void Compute(OpKernelContext* context) override {
-    const Tensor& positions = context->input(0);
-    const Tensor& coefficients = context->input(1);
+    const Tensor &positions = context->input(0);
+    const Tensor &coefficients = context->input(1);
 
     
     TensorShape shape = positions.shape();
     shape.set_dim(shape.dims()-1, coefficients.dim_size(coefficients.dims()-1));
     
     
-    Tensor* interpolation = NULL;
+    Tensor *interpolation = NULL;
     OP_REQUIRES_OK(context, context->allocate_output(0, shape,
                                                      &interpolation));
 
@@ -67,7 +67,7 @@ public:
       grid.dx.push_back(dx[i]);
     }
     grid.channels = NCHAN;
-    grid.debug();
+
     auto start = std::chrono::high_resolution_clock::now();
     SplineGridFunctor<Device>()(context->eigen_device<Device>(),
 				grid,N,
@@ -76,7 +76,7 @@ public:
 				interpolation_flat.data());
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish-start;
-    std::cout << "Computation took: " << elapsed.count() << " s" << std::endl;
+    //    std::cout << "Computation took: " << elapsed.count() << " s" << std::endl;
   }
 
 };
@@ -126,8 +126,8 @@ public:
 
     int n_neigh = grid.neighbors();
 
-    Tensor* indices = NULL;
-    Tensor* values = NULL;
+    Tensor *indices = NULL;
+    Tensor *values = NULL;
 
     OP_REQUIRES_OK(context, context->allocate_output(0, {N*n_neigh*NCHAN,NDIMS+1},
                                                      &indices));
@@ -147,7 +147,7 @@ public:
     
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish-start;
-    std::cout << "Gradient computation took: " << elapsed.count() << " s" << std::endl;
+    //std::cout << "Gradient computation took: " << elapsed.count() << " s" << std::endl;
     
   }
 
