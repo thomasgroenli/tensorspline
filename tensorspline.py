@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
-import os 
+import os
+import math
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 spline_module = tf.load_op_library(os.path.join(dir_path,'splines.so'))
