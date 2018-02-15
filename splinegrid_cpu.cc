@@ -2,13 +2,18 @@
 
 //CPU specialization of actual computation.
 
-float kernel_cpu(float x, int n) {
+float kernel_cpu(float x, int n, int dx) {
   float sigmasq = (n+1)/12.;
-
-  return 1/sqrt(2*M_PI*sigmasq)*exp(-0.5*x*x/sigmasq);
+  float prefactor = 1;
+  if(dx == 1) {
+    prefactor = -x/sigmasq;
+  } else if(dx == 2) {
+    prefactor = (x*x-sigmasq)/(sigmasq*sigmasq);
+  }
+  return prefactor/sqrt(2*M_PI*sigmasq)*exp(-0.5*x*x/sigmasq);
 }
 
-void spline_grid_kernel_cpu(int N, int ndims, int n_neigh, int channels, int *grid_dim, int *strides, int *K, const float *positions, const float *coefficients, float *out) {
+void spline_grid_kernel_cpu(int N, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *coefficients, float *out) {
     int *idx = new int[ndims];
     float *shift = new float[ndims];
     float *channel_sum = new float[channels];
@@ -40,7 +45,7 @@ void spline_grid_kernel_cpu(int N, int ndims, int n_neigh, int channels, int *gr
 	Wij = 1;
 	for(int k=ndims-1; k>=0; k--) {
 	  flat += strides[k]*(idx[k]+reduce%(K[k]+1));
-	  Wij *= kernel_cpu(shift[k]+1-reduce%(K[k]+1),K[k]);
+	  Wij *= kernel_cpu(shift[k]+1-reduce%(K[k]+1),K[k],dx[k]);
 	  reduce/=K[k]+1;
 	}
 	for(int k=0; k<channels; k++) {
@@ -64,8 +69,8 @@ struct SplineGridFunctor<Eigen::ThreadPoolDevice, T> {
     std::vector<int> strides = grid.strides();
     std::vector<int> grid_dim = grid.dims;
     std::vector<int> K = grid.K;
-
-    spline_grid_kernel_cpu(N, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), positions, coefficients, out);
+    std::vector<int> dx = grid.dx;
+    spline_grid_kernel_cpu(N, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, coefficients, out);
 
   }
      

@@ -8,11 +8,15 @@
 #include <chrono>
 #include <stdio.h>
 
+
+#define DEFAULT_ORDER 3
+
 struct Grid {
   std::vector<int> K; // Spline orders
   std::vector<int> dims;
+  std::vector<int> dx;
   int channels;
-
+  
 
   int ndims() const {
     return K.size();
@@ -30,6 +34,36 @@ struct Grid {
       result *= K[i]+1;
     }
     return result;
+  }
+  void debug() {
+    std::cout << "NDims: " << ndims() << std::endl;
+
+    std::cout << "Dims: ";
+    for(int i=0; i<ndims(); i++) {
+      std::cout << dims[i] << " ";
+    }
+    std::cout << std::endl;
+    
+    std::cout << "Strides: ";
+    auto strides_ = strides();
+    for(int i=0; i<ndims(); i++) {
+      std::cout << strides_[i] << " ";
+    }
+    std::cout << std::endl;
+    
+    std::cout << "Order: ";
+    for(int i=0; i<ndims(); i++) {
+      std::cout << K[i] << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Neighbors: " << neighbors() << std::endl;
+    
+    std::cout << "Diff: ";
+    for(int i=0; i<ndims(); i++) {
+      std::cout << dx[i] << " ";
+    }
+    std::cout << std::endl;
   }
 };
 

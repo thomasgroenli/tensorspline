@@ -2,12 +2,16 @@
 REGISTER_OP("SplineGrid")
     .Input("positions: float32")
     .Input("coefficients: float32")
+    .Attr("order: list(int) = []")
+    .Attr("dx: list(int) = []")
     .Output("interpolation: float32");
 
 REGISTER_OP("SplineGridGradient")
     .Input("positions: float32")
     .Input("gradients: float32")
     .Attr("coeff_shape: shape")
+    .Attr("order: list(int) = []")
+    .Attr("dx: list(int) = []")
     .Output("indices: int32")
     .Output("values: float32");
 
@@ -17,8 +21,14 @@ using namespace tensorflow;
 
 template<typename Device>
 class SplineGridOp : public OpKernel {
- public:
-  explicit SplineGridOp(OpKernelConstruction* context) : OpKernel(context) {}
+private:
+    std::vector<int> K;
+    std::vector<int> dx;
+public:
+  explicit SplineGridOp(OpKernelConstruction* context) : OpKernel(context) {
+    context->GetAttr("order", &K);
+    context->GetAttr("dx", &dx);
+  }
 
   void Compute(OpKernelContext* context) override {
     const Tensor& positions = context->input(0);
@@ -43,14 +53,21 @@ class SplineGridOp : public OpKernel {
     int NDIMS = positions.dim_size(positions.dims()-1);
     int NCHAN = coefficients.dim_size(coefficients.dims()-1);
     int N = positions_flat.size()/NDIMS;
+    if(K.size()==0) {
+      K.resize(NDIMS,DEFAULT_ORDER);
+    }
+    if(dx.size()==0) {
+      dx.resize(NDIMS,0);
+    }
 
     Grid grid;
     for(int i=0; i<NDIMS; i++) {
-      grid.K.push_back(3);
+      grid.K.push_back(K[i]);
       grid.dims.push_back(coefficients.dim_size(i));
+      grid.dx.push_back(dx[i]);
     }
     grid.channels = NCHAN;
-
+    grid.debug();
     auto start = std::chrono::high_resolution_clock::now();
     SplineGridFunctor<Device>()(context->eigen_device<Device>(),
 				grid,N,
@@ -70,9 +87,13 @@ template<typename Device>
 class SplineGridGradientOp : public OpKernel {
 private:
   TensorShapeProto coeff_shape;
+    std::vector<int> K;
+    std::vector<int> dx;
 public:
   explicit SplineGridGradientOp(OpKernelConstruction* context) : OpKernel(context) {
     context->GetAttr("coeff_shape", &coeff_shape);
+    context->GetAttr("order", &K);
+    context->GetAttr("dx", &dx);
   }
 
   void Compute(OpKernelContext* context) override {
@@ -88,11 +109,18 @@ public:
     int NDIMS = positions.dim_size(positions.dims()-1);
     int NCHAN = shape.dim_size(shape.dims()-1);
     int N = positions_flat.size()/NDIMS;
-
+    if(K.size()==0) {
+      K.resize(NDIMS,DEFAULT_ORDER);
+    }
+    if(dx.size()==0) {
+      dx.resize(NDIMS,0);
+    }
+    
     Grid grid;
     for(int i=0; i<NDIMS; i++) {
-      grid.K.push_back(3);
+      grid.K.push_back(K[i]);
       grid.dims.push_back(shape.dim_size(i));
+      grid.dx.push_back(dx[i]);
     }
     grid.channels = NCHAN;
 
