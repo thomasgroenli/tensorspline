@@ -10,15 +10,14 @@
 __device__
 float kernel_gpu(float x, int n, int dx) {
   float sigmasq = (n+1)/12.;
-  float prefactor = 1;
-  if(dx == 1) {
-    prefactor = -x/sigmasq;
-  } else if(dx == 2) {
-    prefactor = (x*x-sigmasq)/(sigmasq*sigmasq);
+  
+  float a = 1/sqrt(2*M_PI*sigmasq)*exp(-0.5*x*x/sigmasq),b=0;
+  for(int n=1; n<=dx; n++) {
+    a = -x/sigmasq*a-(n-1)*b;
+    b = a;
   }
-  return prefactor/sqrt(2*M_PI*sigmasq)*exp(-0.5*x*x/sigmasq);
+  return a;
 }
-
 
 __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, float *out) {
 
