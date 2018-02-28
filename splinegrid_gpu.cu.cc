@@ -13,7 +13,7 @@ float kernel_gpu(float x, int n, int dx) {
   
   float a = 1/sqrt(2*M_PI*sigmasq)*exp(-0.5*x*x/sigmasq),b=0;
   for(int n=1; n<=dx; n++) {
-    a = -x/sigmasq*a-(n-1)*b;
+    a = -(x*a+(n-1)*b)/sigmasq;
     b = a;
   }
   return a;

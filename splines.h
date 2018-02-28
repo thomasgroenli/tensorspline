@@ -11,6 +11,8 @@
 
 #define DEFAULT_ORDER 3
 
+#define KERNEL(x, n, order)
+
 struct Grid {
   std::vector<int> K; // Spline orders
   std::vector<int> dims;
