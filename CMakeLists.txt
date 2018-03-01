@@ -51,7 +51,7 @@ set (PYWRAP ${CMAKE_CURRENT_BINARY_DIR}/pywrap/pywrap_tensorflow_internal.lib)
 else(WIN32)
 file(COPY ${TF_LIBRARY}/python/_pywrap_tensorflow_internal.so
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/pywrap)
-file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/pywrap/_pywrap_tensorflow_internal.so libpywrap_tensorflow_internal.so)
+file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/pywrap/_pywrap_tensorflow_internal.so ${CMAKE_CURRENT_BINARY_DIR}/pywrap/libpywrap_tensorflow_internal.so)
 set (PYWRAP ${CMAKE_CURRENT_BINARY_DIR}/pywrap/libpywrap_tensorflow_internal.so)
 endif(WIN32)
 
