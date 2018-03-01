@@ -43,17 +43,7 @@ cuda_add_library(${TARGET_GPU} STATIC ${splinegrid_gpu_srcs})
 
 add_library(splines SHARED splines.cc)
 
-if(WIN32)
-file(COPY ${TF_LIBRARY}/python/pywrap_tensorflow_internal.lib
-        DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/pywrap)
-set (PYWRAP ${CMAKE_CURRENT_BINARY_DIR}/pywrap/pywrap_tensorflow_internal.lib)
-
-else(WIN32)
-file(COPY ${TF_LIBRARY}/python/_pywrap_tensorflow_internal.so
-        DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/pywrap)
-file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/pywrap/_pywrap_tensorflow_internal.so ${CMAKE_CURRENT_BINARY_DIR}/pywrap/libpywrap_tensorflow_internal.so)
-set (PYWRAP ${CMAKE_CURRENT_BINARY_DIR}/pywrap/libpywrap_tensorflow_internal.so)
-endif(WIN32)
+find_library(PYWRAP pywrap_tensorflow_internal PATHS ${TF_LIBRARY}/python)
 
 target_link_libraries(splines ${TARGET} ${TARGET_GPU})
 target_link_libraries(splines ${CUDA_LIBRARIES})
