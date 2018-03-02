@@ -4,6 +4,9 @@
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/op_kernel.h"
+
+
+
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -39,7 +42,14 @@ struct Grid {
     }
     return result;
   }
-  void debug() {
+  int maxorder() const {
+	  int result = 0;
+	  for (int i = 0; i < ndims(); i++) {
+		  result = K[i] > result ? K[i] : result;
+	  }
+	  return result;
+  }
+  void debug() const {
     std::cout << "NDims: " << ndims() << std::endl;
 
     std::cout << "Dims: ";
@@ -81,3 +91,4 @@ struct SplineGridGradientFunctor {
   void operator()(const Device& d, const Grid &, int, const float *, const float *, int *, float *);
 };
 
+float kernel_cpu(float x, int p, int dx, float *tmp);

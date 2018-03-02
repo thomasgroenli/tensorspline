@@ -8,15 +8,19 @@
 //GPU specialization of actual computation.
 
 __device__
-float kernel_gpu(float x, int n, int dx) {
-  float sigmasq = (n+1)/12.;
-  
-  float a = 1/sqrt(2*M_PI*sigmasq)*exp(-0.5*x*x/sigmasq),b=0;
-  for(int n=1; n<=dx; n++) {
-    a = -(x*a+(n-1)*b)/sigmasq;
-    b = a;
-  }
-  return a;
+float kernel_gpu(float x, int p, int dx, float *tmp) {
+	x += (p + 1) / 2.;
+	int k = x;
+	for (int i = 0; i < p + 1; i++) {
+		tmp[blockDim.x*i] = 0;
+	}
+	tmp[blockDim.x*k] = 1;
+	for (int i = 0; i < p; i++) {
+		for (int j = 0; j < p - i; j++) {
+			tmp[blockDim.x*j] = i < p - dx ? (x - j) / (i + 1)*tmp[blockDim.x*j] + (i + 2 + j - x) / (i + 1)*tmp[blockDim.x*(j + 1)] : tmp[blockDim.x*j] - tmp[blockDim.x*(j + 1)];
+		}
+	}
+	return tmp[0];
 }
 
 __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, float *out) {
@@ -45,6 +49,7 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
   int *idx = dx+ndims+threadIdx.x;
   float *shift = (float*)(idx+ndims*blockDim.x);
   float *channel_sum = shift+ndims*blockDim.x;
+  float *kernel_tmp = channel_sum + channels * blockDim.x;
 
   // Accumulating variables
   float tmp;
@@ -56,15 +61,12 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
   for(int i=blockIdx.x * blockDim.x + threadIdx.x; i<N; i += blockDim.x * gridDim.x) {
 
     // Fetch the main index and shift
-    for(int j=0; j<ndims; j++) {
-      tmp = positions[i*ndims+j];
-      if(tmp<0 || tmp>=1) { // Outside bounds
-	idx[blockDim.x*j] = 0;
-	shift[blockDim.x*j] = CUDART_NAN_F;
-      } else {
-	shift[blockDim.x*j] = modff(tmp*(grid_dim[j]-3),&tmp);
-	idx[blockDim.x*j] = tmp;
-      }
+	bool valid = true;
+	for (int j = 0; j<ndims; j++) {
+		  tmp = positions[i*ndims + j];
+		  valid &= (0 <= tmp && tmp < 1);
+		  shift[blockDim.x*j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
+		  idx[blockDim.x*j] = tmp;
     }
 
     // Reset channel sums
@@ -78,13 +80,19 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
       flat = 0;
       Wij = 1;
       for(int k=ndims-1; k>=0; k--) {
-	flat += strides[k]*(idx[blockDim.x*k]+reduce%(K[k]+1));
-	Wij *= kernel_gpu(shift[blockDim.x*k]+1-reduce%(K[k]+1),K[k],dx[k]);
-	reduce/=K[k]+1;
+		  int offset = -(K[k] + 1 - int(shift[blockDim.x*k] + 1)) / 2 + (reduce % (K[k] + 1));
+		  int current = idx[blockDim.x*k] + offset;
+		  float x = shift[blockDim.x*k] - offset;
+		  current = fminf(fmaxf(current, 0), grid_dim[k] - 1);
+
+		  flat += strides[k] * current;
+		  Wij *= kernel_gpu(x, K[k], dx[k], kernel_tmp);
+		  reduce /= K[k] + 1;
+
       }
       // Accumulate contribution in each channel
       for(int k=0; k<channels; k++) {
-	channel_sum[blockDim.x*k] += Wij*coefficients[channels*flat+k];
+		  channel_sum[k] += Wij * (valid ? coefficients[channels*flat + k] : CUDART_NAN_F);
       }
     }
     // Write channel sum to global memory
@@ -102,6 +110,7 @@ struct SplineGridFunctor<Eigen::GpuDevice, T> {
     int ndims = grid.ndims();
     int n_neigh = grid.neighbors();
     int channels = grid.channels;
+	int max_order = grid.maxorder();
     std::vector<int> strides = grid.strides();
     std::vector<int> grid_dim = grid.dims;
     std::vector<int> K = grid.K;
@@ -124,6 +133,7 @@ struct SplineGridFunctor<Eigen::GpuDevice, T> {
     shared_size += ndims*THREADS*sizeof(int);
     shared_size += ndims*THREADS*sizeof(float);
     shared_size += channels*THREADS*sizeof(float);
+	shared_size += (max_order + 1) * THREADS * sizeof(float);
 
     // Enqueue kernel
     spline_grid_kernel_gpu<<<80, THREADS, shared_size>>>(N, ndims, n_neigh, channels, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, coefficients, out);
