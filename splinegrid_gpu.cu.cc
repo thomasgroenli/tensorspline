@@ -92,7 +92,7 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
       }
       // Accumulate contribution in each channel
       for(int k=0; k<channels; k++) {
-		  channel_sum[k] += Wij * (valid ? coefficients[channels*flat + k] : CUDART_NAN_F);
+		  channel_sum[blockDim.x*k] += Wij * (valid ? coefficients[channels*flat + k] : CUDART_NAN_F);
       }
     }
     // Write channel sum to global memory
