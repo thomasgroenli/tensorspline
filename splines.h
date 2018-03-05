@@ -1,11 +1,12 @@
 #pragma once
 #define _USE_MATH_DEFINES
 
+#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
+
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/op_kernel.h"
-
-
+#include "tensorflow/core/util/work_sharder.h"
 
 #include <iostream>
 #include <cmath>
@@ -13,7 +14,7 @@
 #include <chrono>
 #include <stdio.h>
 
-
+using namespace tensorflow;
 #define DEFAULT_ORDER 3
 
 #define KERNEL(x, n, order)
@@ -77,18 +78,17 @@ struct Grid {
     for(int i=0; i<ndims(); i++) {
       std::cout << dx[i] << " ";
     }
+	std::cout << "Max order: " << maxorder() << std::endl;
     std::cout << std::endl;
   }
 };
 
 template<typename Device, typename T=float>
 struct SplineGridFunctor {
-  void operator()(const Device& d, const Grid &, int, const float *, const float *, float *);
+  void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, float *);
 };
 
 template<typename Device, typename T=float>
 struct SplineGridGradientFunctor {
-  void operator()(const Device& d, const Grid &, int, const float *, const float *, int *, float *);
+  void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, int *, float *);
 };
-
-float kernel_cpu(float x, int p, int dx, float *tmp);

@@ -3,7 +3,6 @@ set (CMAKE_CXX_STANDARD 11)
 set( CMAKE_CXX_FLAGS "-std=c++11 -O2 -D_GLIBCXX_USE_CXX11_ABI=0 -fPIC")
 find_package(CUDA REQUIRED)
 
-
 list(APPEND CUDA_NVCC_FLAGS "--gpu-architecture=sm_52 -expt-relaxed-constexpr")
 
 
@@ -17,11 +16,9 @@ endif(WIN32)
 
 set(splinegrid_srcs
 	"splinegrid_cpu.cc"
-	"splinegrid_gradient_cpu.cc"
 )
 set(splinegrid_gpu_srcs
 	"splinegrid_gpu.cu.cc"
-	"splinegrid_gradient_gpu.cu.cc"
 )
 
 execute_process(COMMAND python -c "import sys,tensorflow; sys.stdout.write(tensorflow.sysconfig.get_include())" OUTPUT_VARIABLE TF_INCLUDE_DIR)

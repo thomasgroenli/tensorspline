@@ -17,13 +17,14 @@ REGISTER_OP("SplineGridGradient")
 
 
 
-using namespace tensorflow;
+
 
 template<typename Device>
 class SplineGridOp : public OpKernel {
 private:
     std::vector<int> K;
     std::vector<int> dx;
+
 public:
   explicit SplineGridOp(OpKernelConstruction* context) : OpKernel(context) {
     context->GetAttr("order", &K);
@@ -67,9 +68,10 @@ public:
       grid.dx.push_back(dx[i]);
     }
     grid.channels = NCHAN;
+	
 
     auto start = std::chrono::high_resolution_clock::now();
-    SplineGridFunctor<Device>()(context->eigen_device<Device>(),
+    SplineGridFunctor<Device>()(context,
 				grid,N,
 				positions_flat.data(),
 				coefficients_flat.data(),
@@ -138,13 +140,13 @@ public:
     auto indices_flat  = indices->flat<int>();
     auto values_flat  = values->flat<float>();
     auto start = std::chrono::high_resolution_clock::now();
-    SplineGridGradientFunctor<Device>()(context->eigen_device<Device>(),
+    SplineGridGradientFunctor<Device>()(context,
 				grid,N,
 				positions_flat.data(),
 				grad_flat.data(),
 				indices_flat.data(),
 				values_flat.data());
-    
+
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish-start;
     //std::cout << "Gradient computation took: " << elapsed.count() << " s" << std::endl;
