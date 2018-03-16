@@ -2,7 +2,6 @@
 
 #include "splines.h"
 
-#define CUDART_NAN_F            __int_as_float(0x7fffffff)
 #define THREADS 64
 
 
@@ -11,9 +10,9 @@ float kernel_gpu(float x, int p, int dx, float *tmp) {
 	x += (p + 1) / 2.;
 	int k = x;
 	for (int i = 0; i < p + 1; i++) {
-		tmp[blockDim.x*i] = 0;
+		tmp[blockDim.x*i] = k==i;
 	}
-	tmp[blockDim.x*k] = 1;
+
 	for (int i = 0; i < p; i++) {
 		for (int j = 0; j < p - i; j++) {
 			tmp[blockDim.x*j] = i < p - dx ? (x - j) / (i + 1)*tmp[blockDim.x*j] + (i + 2 + j - x) / (i + 1)*tmp[blockDim.x*(j + 1)] : tmp[blockDim.x*j] - tmp[blockDim.x*(j + 1)];
@@ -37,7 +36,7 @@ float gauss_kernel_gpu(float x, int n, int dx) {
 
 //GPU specialization of actual computation.
 
-__global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, float *out) {
+__global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, float *out) {
 
   extern __shared__ int shared_info[];
   int *grid_dim = shared_info;
@@ -105,12 +104,12 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
       }
       // Accumulate contribution in each channel
       for(int k=0; k<channels; k++) {
-		  channel_sum[blockDim.x*k] += Wij * (valid ? coefficients[channels*flat + k] : CUDART_NAN_F);
+		  channel_sum[blockDim.x*k] += Wij * (valid ? coefficients[channels*flat + k] : 0);
       }
     }
     // Write channel sum to global memory
     for(int j=0; j<channels; j++) {
-      out[i*channels+j] = channel_sum[blockDim.x*j];
+      out[i*channels+j] = valid ? channel_sum[blockDim.x*j] : fill_value;
     }
   }
 }
@@ -124,6 +123,7 @@ struct SplineGridFunctor<Eigen::GpuDevice, T> {
     int n_neigh = grid.neighbors();
     int channels = grid.channels;
 	int max_order = grid.maxorder();
+	float fill_value = grid.fill_value;
     std::vector<int> strides = grid.strides();
     std::vector<int> grid_dim = grid.dims;
     std::vector<int> K = grid.K;
@@ -149,7 +149,7 @@ struct SplineGridFunctor<Eigen::GpuDevice, T> {
 	shared_size += (max_order + 1) * THREADS * sizeof(float);
 
     // Enqueue kernel
-    spline_grid_kernel_gpu<<<80, THREADS, shared_size>>>(N, ndims, n_neigh, channels, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, coefficients, out);
+    spline_grid_kernel_gpu<<<80, THREADS, shared_size>>>(N, ndims, n_neigh, channels, fill_value, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, coefficients, out);
 
 
     // Free resources

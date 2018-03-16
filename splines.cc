@@ -4,6 +4,7 @@ REGISTER_OP("SplineGrid")
     .Input("coefficients: float32")
     .Attr("order: list(int) = []")
     .Attr("dx: list(int) = []")
+	.Attr("fill_value: float = 0")
     .Output("interpolation: float32");
 
 REGISTER_OP("SplineGridGradient")
@@ -24,11 +25,13 @@ class SplineGridOp : public OpKernel {
 private:
     std::vector<int> K;
     std::vector<int> dx;
+	float fill_value;
 
 public:
   explicit SplineGridOp(OpKernelConstruction* context) : OpKernel(context) {
     context->GetAttr("order", &K);
     context->GetAttr("dx", &dx);
+	context->GetAttr("fill_value", &fill_value);
   }
 
   void Compute(OpKernelContext* context) override {
@@ -68,7 +71,7 @@ public:
       grid.dx.push_back(dx[i]);
     }
     grid.channels = NCHAN;
-	
+	grid.fill_value = fill_value;
 
     auto start = std::chrono::high_resolution_clock::now();
     SplineGridFunctor<Device>()(context,

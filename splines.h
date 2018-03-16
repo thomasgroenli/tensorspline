@@ -23,6 +23,7 @@ struct Grid {
   std::vector<int> K; // Spline orders
   std::vector<int> dims;
   std::vector<int> dx;
+  float fill_value;
   int channels;
   
 
