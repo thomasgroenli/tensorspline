@@ -1,11 +1,13 @@
 #include "splines.h"
 REGISTER_OP("SplineGrid")
-    .Input("positions: float32")
-    .Input("coefficients: float32")
-    .Attr("order: list(int) = []")
-    .Attr("dx: list(int) = []")
-	.Attr("fill_value: float = 0")
-    .Output("interpolation: float32");
+.Input("positions: float32")
+.Input("coefficients: float32")
+.Attr("order: list(int) = []")
+.Attr("dx: list(int) = []")
+.Attr("fill_value: float = 0")
+.Attr("normalized: bool = true")
+.Output("interpolation: float32");
+
 
 REGISTER_OP("SplineGridGradient")
     .Input("positions: float32")
@@ -13,6 +15,7 @@ REGISTER_OP("SplineGridGradient")
     .Attr("coeff_shape: shape")
     .Attr("order: list(int) = []")
     .Attr("dx: list(int) = []")
+	.Attr("normalized: bool = true")
     .Output("indices: int32")
     .Output("values: float32");
 
@@ -26,12 +29,13 @@ private:
     std::vector<int> K;
     std::vector<int> dx;
 	float fill_value;
-
+	bool normalized;
 public:
   explicit SplineGridOp(OpKernelConstruction* context) : OpKernel(context) {
     context->GetAttr("order", &K);
     context->GetAttr("dx", &dx);
 	context->GetAttr("fill_value", &fill_value);
+	context->GetAttr("normalized", &normalized);
   }
 
   void Compute(OpKernelContext* context) override {
@@ -72,6 +76,7 @@ public:
     }
     grid.channels = NCHAN;
 	grid.fill_value = fill_value;
+	grid.normalized = normalized;
 
     auto start = std::chrono::high_resolution_clock::now();
     SplineGridFunctor<Device>()(context,
@@ -94,11 +99,13 @@ private:
   TensorShapeProto coeff_shape;
     std::vector<int> K;
     std::vector<int> dx;
+	bool normalized;
 public:
   explicit SplineGridGradientOp(OpKernelConstruction* context) : OpKernel(context) {
     context->GetAttr("coeff_shape", &coeff_shape);
     context->GetAttr("order", &K);
     context->GetAttr("dx", &dx);
+	context->GetAttr("normalized", &normalized);
   }
 
   void Compute(OpKernelContext* context) override {
@@ -128,7 +135,7 @@ public:
       grid.dx.push_back(dx[i]);
     }
     grid.channels = NCHAN;
-
+	grid.normalized = normalized;
     int n_neigh = grid.neighbors();
 
     Tensor *indices = NULL;

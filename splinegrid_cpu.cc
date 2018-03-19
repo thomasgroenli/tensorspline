@@ -2,6 +2,9 @@
 
 //CPU specialization of actual computation.
 float kernel_cpu(float x, int p, int dx, float *tmp) {
+	if (dx > p) {
+		return 0;
+	}
 	x += (p + 1) / 2.;
 	int k = x;
 	for (int i = 0; i < p + 1; i++) {
@@ -28,7 +31,7 @@ float gauss_kernel_cpu(float x, int n, int dx) {
 }
 
 
-void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *coefficients, float *out) {
+void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, float fill_value, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *coefficients, float *out) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
 	float *channel_sum = new float[channels];
@@ -48,6 +51,9 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 		bool valid = true;
 		for (int j = 0; j < ndims; j++) {
 			tmp = positions[i*ndims + j];
+			if (!normalized) {
+				tmp /= grid_dim[j];
+			}
 			valid &= (0 <= tmp && tmp < 1);
 			shift[j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
 			idx[j] = tmp;
@@ -89,6 +95,7 @@ struct SplineGridFunctor<Eigen::ThreadPoolDevice, T> {
     int n_neigh = grid.neighbors();
     int channels = grid.channels;
 	float fill_value = grid.fill_value;
+	bool normalized = grid.normalized;
     std::vector<int> strides = grid.strides();
     std::vector<int> grid_dim = grid.dims;
     std::vector<int> K = grid.K;
@@ -96,7 +103,7 @@ struct SplineGridFunctor<Eigen::ThreadPoolDevice, T> {
 
 	auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 	Shard(pool->NumThreads(), pool, N, 128, [&](int start, int end) {
-		spline_grid_kernel_cpu(start, end, ndims, n_neigh, channels, fill_value, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, coefficients, out);
+		spline_grid_kernel_cpu(start, end, ndims, n_neigh, channels, fill_value, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, coefficients, out);
 	});
   }
      
@@ -106,7 +113,7 @@ struct SplineGridFunctor<Eigen::ThreadPoolDevice, T> {
 
 template struct SplineGridFunctor<Eigen::ThreadPoolDevice, float>;
 
-void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *grad, int *indices, float *values) {
+void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *grad, int *indices, float *values) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
 
@@ -124,6 +131,9 @@ void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh,
 		bool valid = true;
 		for (int j = 0; j < ndims; j++) {
 			tmp = positions[i*ndims + j];
+			if (!normalized) {
+				tmp /= grid_dim[j];
+			}
 			valid &= (0 <= tmp && tmp < 1);
 			shift[j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
 			idx[j] = tmp;
@@ -160,13 +170,14 @@ struct SplineGridGradientFunctor<Eigen::ThreadPoolDevice, T> {
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
 		int channels = grid.channels;
+		bool normalized = grid.normalized;
 		std::vector<int> strides = grid.strides();
 		std::vector<int> grid_dim = grid.dims;
 		std::vector<int> K = grid.K;
 		std::vector<int> dx = grid.dx;
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 		Shard(pool->NumThreads(), pool, N, 256, [&](int start, int end) {
-			spline_grid_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, grad, indices, values);
+			spline_grid_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, grad, indices, values);
 		});
 	}
 

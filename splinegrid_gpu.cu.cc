@@ -7,6 +7,9 @@
 
 __device__
 float kernel_gpu(float x, int p, int dx, float *tmp) {
+	if (dx > p) {
+		return 0;
+	}
 	x += (p + 1) / 2.;
 	int k = x;
 	for (int i = 0; i < p + 1; i++) {
@@ -36,7 +39,7 @@ float gauss_kernel_gpu(float x, int n, int dx) {
 
 //GPU specialization of actual computation.
 
-__global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, float *out) {
+__global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, float fill_value, bool normalized, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, float *out) {
 
   extern __shared__ int shared_info[];
   int *grid_dim = shared_info;
@@ -76,6 +79,9 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 	bool valid = true;
 	for (int j = 0; j<ndims; j++) {
 		  tmp = positions[i*ndims + j];
+		  if (!normalized) {
+			  tmp /= grid_dim[j];
+		  }
 		  valid &= (0 <= tmp && tmp < 1);
 		  shift[blockDim.x*j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
 		  idx[blockDim.x*j] = tmp;
@@ -124,6 +130,7 @@ struct SplineGridFunctor<Eigen::GpuDevice, T> {
     int channels = grid.channels;
 	int max_order = grid.maxorder();
 	float fill_value = grid.fill_value;
+	bool normalized = grid.normalized;
     std::vector<int> strides = grid.strides();
     std::vector<int> grid_dim = grid.dims;
     std::vector<int> K = grid.K;
@@ -149,7 +156,7 @@ struct SplineGridFunctor<Eigen::GpuDevice, T> {
 	shared_size += (max_order + 1) * THREADS * sizeof(float);
 
     // Enqueue kernel
-    spline_grid_kernel_gpu<<<80, THREADS, shared_size>>>(N, ndims, n_neigh, channels, fill_value, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, coefficients, out);
+    spline_grid_kernel_gpu<<<80, THREADS, shared_size>>>(N, ndims, n_neigh, channels, fill_value, normalized, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, coefficients, out);
 
 
     // Free resources
@@ -166,7 +173,7 @@ template struct SplineGridFunctor<Eigen::GpuDevice,float>;
 
 //GPU specialization of actual computation.
 
-__global__ void spline_grid_gradient_kernel_gpu(int N, int ndims, int n_neigh, int channels, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *grad, int *indices, float *values) {
+__global__ void spline_grid_gradient_kernel_gpu(int N, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *grad, int *indices, float *values) {
 
 	extern __shared__ int shared_info[];
 	int *grid_dim = shared_info;
@@ -204,6 +211,9 @@ __global__ void spline_grid_gradient_kernel_gpu(int N, int ndims, int n_neigh, i
 		bool valid = true;
 		for (int j = 0; j<ndims; j++) {
 			tmp = positions[i*ndims + j];
+			if (!normalized) {
+				tmp /= grid_dim[j];
+			}
 			valid &= (0 <= tmp && tmp < 1);
 			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
 			idx[blockDim.x*j] = tmp;
@@ -241,6 +251,7 @@ struct SplineGridGradientFunctor<Eigen::GpuDevice, T> {
 		int n_neigh = grid.neighbors();
 		int channels = grid.channels;
 		int max_order = grid.maxorder();
+		bool normalized = grid.normalized;
 		std::vector<int> strides = grid.strides();
 		std::vector<int> grid_dim = grid.dims;
 		std::vector<int> K = grid.K;
@@ -265,7 +276,7 @@ struct SplineGridGradientFunctor<Eigen::GpuDevice, T> {
 		shared_size += (max_order + 1) * THREADS * sizeof(float);
 
 		// Enqueue kernel
-		spline_grid_gradient_kernel_gpu << <80, THREADS, shared_size >> >(N, ndims, n_neigh, channels, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, grad, indices, values);
+		spline_grid_gradient_kernel_gpu << <80, THREADS, shared_size >> >(N, ndims, n_neigh, channels, normalized, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, grad, indices, values);
 
 		// Free resources
 		cudaFree(grid_dim_ptr);

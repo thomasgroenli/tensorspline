@@ -24,6 +24,7 @@ struct Grid {
   std::vector<int> dims;
   std::vector<int> dx;
   float fill_value;
+  bool normalized;
   int channels;
   
 
