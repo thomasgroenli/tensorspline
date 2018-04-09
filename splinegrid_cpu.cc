@@ -162,7 +162,7 @@ struct SplineGridGradientFunctor<Eigen::ThreadPoolDevice, T> {
 		std::vector<int> K = grid.K;
 		std::vector<int> dx = grid.dx;
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
-		Shard(1/*pool->NumThreads()*/, pool, N, 256, [&](int start, int end) {
+		Shard(pool->NumThreads(), pool, N, 256, [&](int start, int end) {
 			spline_grid_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, grad, indices, values);
 		});
 	}
