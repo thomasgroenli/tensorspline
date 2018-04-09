@@ -19,18 +19,6 @@ float kernel_cpu(float x, int p, int dx, float *tmp) {
 	return tmp[0];
 }
 
-float gauss_kernel_cpu(float x, int n, int dx) {
-	float sigmasq = (n + 1) / 12.;
-
-	float a = 1 / sqrt(2 * M_PI*sigmasq)*exp(-0.5*x*x / sigmasq), b = 0;
-	for (int n = 1; n <= dx; n++) {
-		a = -(x*a + (n - 1)*b) / sigmasq;
-		b = a;
-	}
-	return a;
-}
-
-
 void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, float fill_value, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *coefficients, float *out) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
@@ -54,7 +42,7 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 			if (!normalized) {
 				tmp /= grid_dim[j];
 			}
-			valid &= (0 <= tmp && tmp < 1);
+			valid &= (0 <= tmp && tmp <= 1);
 			shift[j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
 			idx[j] = tmp;
 		}
@@ -109,8 +97,6 @@ struct SplineGridFunctor<Eigen::ThreadPoolDevice, T> {
      
 };
 
-
-
 template struct SplineGridFunctor<Eigen::ThreadPoolDevice, float>;
 
 void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *grad, int *indices, float *values) {
@@ -134,7 +120,7 @@ void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh,
 			if (!normalized) {
 				tmp /= grid_dim[j];
 			}
-			valid &= (0 <= tmp && tmp < 1);
+			valid &= (0 <= tmp && tmp <= 1);
 			shift[j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
 			idx[j] = tmp;
 		}
@@ -176,7 +162,7 @@ struct SplineGridGradientFunctor<Eigen::ThreadPoolDevice, T> {
 		std::vector<int> K = grid.K;
 		std::vector<int> dx = grid.dx;
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
-		Shard(pool->NumThreads(), pool, N, 256, [&](int start, int end) {
+		Shard(1/*pool->NumThreads()*/, pool, N, 256, [&](int start, int end) {
 			spline_grid_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, grad, indices, values);
 		});
 	}

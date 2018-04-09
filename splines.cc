@@ -1,25 +1,24 @@
 #include "splines.h"
 REGISTER_OP("SplineGrid")
-.Input("positions: float32")
-.Input("coefficients: float32")
-.Attr("order: list(int) = []")
-.Attr("dx: list(int) = []")
-.Attr("fill_value: float = 0")
-.Attr("normalized: bool = true")
-.Output("interpolation: float32");
+	.Input("positions: float32")
+	.Input("coefficients: float32")
+	.Attr("order: list(int) = []")
+	.Attr("dx: list(int) = []")
+	.Attr("fill_value: float = 0")
+	.Attr("normalized: bool = true")
+	.Attr("debug: bool = false")
+	.Output("interpolation: float32");
 
 
 REGISTER_OP("SplineGridGradient")
-    .Input("positions: float32")
-    .Input("gradients: float32")
-    .Attr("coeff_shape: shape")
-    .Attr("order: list(int) = []")
-    .Attr("dx: list(int) = []")
+	.Input("positions: float32")
+	.Input("gradients: float32")
+	.Attr("coeff_shape: shape")
+	.Attr("order: list(int) = []")
+	.Attr("dx: list(int) = []")
 	.Attr("normalized: bool = true")
-    .Output("indices: int32")
-    .Output("values: float32");
-
-
+	.Output("indices: int32")
+	.Output("values: float32");
 
 
 
@@ -30,12 +29,14 @@ private:
     std::vector<int> dx;
 	float fill_value;
 	bool normalized;
+	bool debug;
 public:
   explicit SplineGridOp(OpKernelConstruction* context) : OpKernel(context) {
     context->GetAttr("order", &K);
     context->GetAttr("dx", &dx);
 	context->GetAttr("fill_value", &fill_value);
 	context->GetAttr("normalized", &normalized);
+	context->GetAttr("debug", &debug);
   }
 
   void Compute(OpKernelContext* context) override {
@@ -78,6 +79,11 @@ public:
 	grid.fill_value = fill_value;
 	grid.normalized = normalized;
 
+	if(debug) {
+		grid.debug();
+	}
+	OP_REQUIRES(context, positions.dim_size(positions.dims()-1) == coefficients.dims()-1,
+		errors::InvalidArgument("Number of components of position tensor must agree with coefficients rank"));
     auto start = std::chrono::high_resolution_clock::now();
     SplineGridFunctor<Device>()(context,
 				grid,N,
@@ -86,7 +92,9 @@ public:
 				interpolation_flat.data());
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish-start;
-    //    std::cout << "Computation took: " << elapsed.count() << " s" << std::endl;
+	if (debug) {
+		std::cout << "Computation took: " << elapsed.count() << " s" << std::endl;
+	}
   }
 
 };

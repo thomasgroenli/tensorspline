@@ -67,7 +67,7 @@ struct Grid {
       std::cout << strides_[i] << " ";
     }
     std::cout << std::endl;
-    
+	std::cout << "Channels: " << channels << std::endl;
     std::cout << "Order: ";
     for(int i=0; i<ndims(); i++) {
       std::cout << K[i] << " ";
@@ -80,8 +80,10 @@ struct Grid {
     for(int i=0; i<ndims(); i++) {
       std::cout << dx[i] << " ";
     }
+	std::cout << std::endl;
 	std::cout << "Max order: " << maxorder() << std::endl;
-    std::cout << std::endl;
+	std::cout << "Fill value: " << fill_value << std::endl;
+	std::cout << "Normalized: " << normalized << std::endl;
   }
 };
 

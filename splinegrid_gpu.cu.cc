@@ -5,6 +5,7 @@
 #define THREADS 64
 
 
+//GPU specialization of actual computation.
 __device__
 float kernel_gpu(float x, int p, int dx, float *tmp) {
 	if (dx > p) {
@@ -24,20 +25,6 @@ float kernel_gpu(float x, int p, int dx, float *tmp) {
 	return tmp[0];
 }
 
-__device__
-float gauss_kernel_gpu(float x, int n, int dx) {
-	float sigmasq = (n + 1) / 12.;
-
-	float a = 1 / sqrt(2 * M_PI*sigmasq)*exp(-0.5*x*x / sigmasq), b = 0;
-	for (int n = 1; n <= dx; n++) {
-		a = -(x*a + (n - 1)*b) / sigmasq;
-		b = a;
-	}
-	return a;
-}
-
-
-//GPU specialization of actual computation.
 
 __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, float fill_value, bool normalized, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, float *out) {
 
@@ -82,7 +69,7 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 		  if (!normalized) {
 			  tmp /= grid_dim[j];
 		  }
-		  valid &= (0 <= tmp && tmp < 1);
+		  valid &= (0 <= tmp && tmp <= 1);
 		  shift[blockDim.x*j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
 		  idx[blockDim.x*j] = tmp;
     }
@@ -214,7 +201,7 @@ __global__ void spline_grid_gradient_kernel_gpu(int N, int ndims, int n_neigh, i
 			if (!normalized) {
 				tmp /= grid_dim[j];
 			}
-			valid &= (0 <= tmp && tmp < 1);
+			valid &= (0 <= tmp && tmp <= 1);
 			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
 			idx[blockDim.x*j] = tmp;
 		}
