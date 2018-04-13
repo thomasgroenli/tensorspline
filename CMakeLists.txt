@@ -15,11 +15,13 @@ endif(WIN32)
 
 
 set(splinegrid_srcs
-	"splinegrid_cpu.cc"
+	"src/splinegrid_cpu.cc"
 )
 set(splinegrid_gpu_srcs
-	"splinegrid_gpu.cu.cc"
+	"src/splinegrid_gpu.cu.cc"
 )
+
+
 
 execute_process(COMMAND python -c "import sys,tensorflow; sys.stdout.write(tensorflow.sysconfig.get_include())" OUTPUT_VARIABLE TF_INCLUDE_DIR)
 execute_process(COMMAND python -c "import sys,tensorflow; sys.stdout.write(tensorflow.sysconfig.get_lib())" OUTPUT_VARIABLE TF_LIBRARY)
@@ -38,7 +40,7 @@ set_source_files_properties(${splinegrid_gpu_srcs} PROPERTIES CUDA_SOURCE_PROPER
 add_library(${TARGET} STATIC ${splinegrid_srcs})
 cuda_add_library(${TARGET_GPU} STATIC ${splinegrid_gpu_srcs})
 
-add_library(splines SHARED splines.cc)
+add_library(splines SHARED src/splines.cc)
 
 find_library(PYWRAP pywrap_tensorflow_internal PATHS ${TF_LIBRARY}/python)
 
@@ -47,3 +49,22 @@ target_link_libraries(splines ${CUDA_LIBRARIES})
 target_link_libraries(splines ${PYWRAP})
 
 set_target_properties(splines PROPERTIES PREFIX "")
+
+add_custom_command(
+        TARGET splines POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/setup.py
+                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/setup.py)
+
+add_custom_command(
+        TARGET splines POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/tensorspline/__init__.py
+                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/tensorspline/__init__.py)
+
+
+add_custom_command(
+        TARGET splines POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/splines.dll
+                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/tensorspline/lib/splines.dll)
