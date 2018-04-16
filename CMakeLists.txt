@@ -50,6 +50,8 @@ target_link_libraries(splines ${PYWRAP})
 
 set_target_properties(splines PROPERTIES PREFIX "")
 
+get_target_property(SUFFIX splines SUFFIX)
+
 add_custom_command(
         TARGET splines POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
@@ -62,9 +64,8 @@ add_custom_command(
                 ${CMAKE_SOURCE_DIR}/tensorspline/__init__.py
                 ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/tensorspline/__init__.py)
 
-
 add_custom_command(
         TARGET splines POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/splines.dll
-                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/tensorspline/lib/splines.dll)
+                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/$<TARGET_FILE_NAME:splines>
+                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/tensorspline/lib/$<TARGET_FILE_NAME:splines>)
