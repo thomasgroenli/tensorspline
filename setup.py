@@ -1,4 +1,7 @@
 from distutils.core import setup
+import os
+suffix = 'dll' if os.name == 'nt' else 'so' 
+
 
 setup(name='TensorSpline',
       version='1.0',
@@ -7,5 +10,5 @@ setup(name='TensorSpline',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],
 
-      package_data={'tensorspline': ['lib/splines.dll']}
+      package_data={'tensorspline': ['./lib/splines.'+suffix]}
      )
