@@ -17,7 +17,8 @@ REGISTER_OP("SplineGridGradient")
 	.Attr("order: list(int) = []")
 	.Attr("dx: list(int) = []")
 	.Attr("normalized: bool = true")
-	.Output("indices: int32")
+        .Attr("debug: bool = false")
+        .Output("indices: int32")
 	.Output("values: float32");
 
 
@@ -78,10 +79,8 @@ public:
     grid.channels = NCHAN;
 	grid.fill_value = fill_value;
 	grid.normalized = normalized;
-
-	if(debug) {
-		grid.debug();
-	}
+    int n_neigh = grid.neighbors();
+    
 	OP_REQUIRES(context, positions.dim_size(positions.dims()-1) == coefficients.dims()-1,
 		errors::InvalidArgument("Number of components of position tensor must agree with coefficients rank"));
     auto start = std::chrono::high_resolution_clock::now();
@@ -93,7 +92,7 @@ public:
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish-start;
 	if (debug) {
-		std::cout << "Computation took: " << elapsed.count() << " s" << std::endl;
+	  std::cout << "Interpolation performance: " << N*n_neigh*NCHAN/elapsed.count() << "C/s" << std::endl;
 	}
   }
 
@@ -106,14 +105,16 @@ class SplineGridGradientOp : public OpKernel {
 private:
   TensorShapeProto coeff_shape;
     std::vector<int> K;
-    std::vector<int> dx;
+    std::vector<int> dx;       
 	bool normalized;
+        bool debug;
 public:
   explicit SplineGridGradientOp(OpKernelConstruction* context) : OpKernel(context) {
     context->GetAttr("coeff_shape", &coeff_shape);
     context->GetAttr("order", &K);
     context->GetAttr("dx", &dx);
 	context->GetAttr("normalized", &normalized);
+	context->GetAttr("debug", &debug);
   }
 
   void Compute(OpKernelContext* context) override {
@@ -167,8 +168,9 @@ public:
 
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish-start;
-    //std::cout << "Gradient computation took: " << elapsed.count() << " s" << std::endl;
-    
+    	if (debug) {
+		std::cout << "Gradient performance: " << N*n_neigh*NCHAN/elapsed.count() << "C/s" << std::endl;
+	}    
   }
 
 };
