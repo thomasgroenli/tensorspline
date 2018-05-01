@@ -91,7 +91,7 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 		  current = fminf(fmaxf(current, 0), grid_dim[k] - 1);
 
 		  flat += strides[k] * current;
-		  Wij *= kernel_gpu(x, K[k], dx[k], kernel_tmp);
+		  Wij *= kernel_gpu(x, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
 		  reduce /= K[k] + 1;
 
       }
@@ -219,7 +219,7 @@ __global__ void spline_grid_gradient_kernel_gpu(int N, int ndims, int n_neigh, i
 				for (int l = 0; l<channels; l++) {
 					indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = current;
 				}
-				Wij *= kernel_gpu(x, K[k], dx[k], kernel_tmp);
+				Wij *= kernel_gpu(x, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k<channels; k++) {

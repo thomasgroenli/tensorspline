@@ -61,7 +61,7 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 				current = fmin(fmax(current, 0), grid_dim[k] - 1);
 
 				flat += strides[k] * current;
-				Wij *= kernel_cpu(x, K[k], dx[k], kernel_tmp);
+				Wij *= kernel_cpu(x, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
@@ -137,7 +137,7 @@ void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh,
 				for (int l = 0; l<channels; l++) {
 					indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? current : 0;
 				}
-				Wij *= kernel_cpu(x, K[k], dx[k], kernel_tmp);
+				Wij *= kernel_cpu(x, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k<channels; k++) {
