@@ -23,7 +23,7 @@ REGISTER_OP("SplineGridGradient")
 
 
 
-template<typename Device>
+template<::DeviceType Device>
 class SplineGridOp : public OpKernel {
 private:
 	std::vector<int> K;
@@ -100,7 +100,7 @@ public:
 
 
 
-template<typename Device>
+template<::DeviceType Device>
 class SplineGridGradientOp : public OpKernel {
 private:
 	TensorShapeProto coeff_shape;
@@ -176,7 +176,11 @@ public:
 };
 
 
-REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<Eigen::ThreadPoolDevice>);
-REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<Eigen::GpuDevice>);
-REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_CPU), SplineGridGradientOp<Eigen::ThreadPoolDevice>);
-REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_GPU), SplineGridGradientOp<Eigen::GpuDevice>);
+REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<CPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_CPU), SplineGridGradientOp<CPU>);
+
+
+#ifdef USE_GPU
+REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<GPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_GPU), SplineGridGradientOp<GPU>);
+#endif

@@ -1,10 +1,6 @@
 #pragma once
 #define _USE_MATH_DEFINES
 
-#define MULTITHREAD
-
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
-
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -87,12 +83,14 @@ struct Grid {
 	}
 };
 
-template<typename Device, typename T = float>
+enum DeviceType {CPU, GPU};
+
+template<::DeviceType Device, typename T = float>
 struct SplineGridFunctor {
 	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, float *);
 };
 
-template<typename Device, typename T = float>
+template<::DeviceType Device, typename T = float>
 struct SplineGridGradientFunctor {
 	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, int *, float *);
 };

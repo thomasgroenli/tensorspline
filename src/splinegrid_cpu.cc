@@ -29,16 +29,10 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 	}
 	float *kernel_tmp = new float[max_order + 1];
 
-	float tmp;
-	int reduce;
-	int flat;
-	float Wij;
-
-
 	for (int i = start; i < end; ++i) {
 		bool valid = true;
 		for (int j = 0; j < ndims; j++) {
-			tmp = positions[i*ndims + j];
+			float tmp = positions[i*ndims + j];
 			if (!normalized) {
 				tmp /= grid_dim[j];
 			}
@@ -51,17 +45,14 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 		}
 
 		for (int j = 0; j < n_neigh; j++) {
-			reduce = j;
-			flat = 0;
-			Wij = 1;
+			int reduce = j;
+			int flat = 0;
+			float Wij = 1;
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[k] + 1)) / 2 + (reduce % (K[k] + 1));
-				int current = idx[k] + offset;
-				float x = shift[k] - offset;
-				current = fmin(fmax(current, 0), grid_dim[k] - 1);
 
-				flat += strides[k] * current;
-				Wij *= kernel_cpu(x, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
+				flat += strides[k] * fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1);
+				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
@@ -76,7 +67,7 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 }
 
 template<typename T>
-struct SplineGridFunctor<Eigen::ThreadPoolDevice, T> {
+struct SplineGridFunctor<CPU, T> {
 	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, float *out) {
 
 		int ndims = grid.ndims();
@@ -100,7 +91,7 @@ struct SplineGridFunctor<Eigen::ThreadPoolDevice, T> {
 	}
 };
 
-template struct SplineGridFunctor<Eigen::ThreadPoolDevice, float>;
+template struct SplineGridFunctor<CPU, float>;
 
 void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *grad, int *indices, float *values) {
 	int *idx = new int[ndims];
@@ -112,14 +103,11 @@ void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh,
 	}
 	float *kernel_tmp = new float[max_order + 1];
 
-	float tmp;
-	int reduce;
-	float Wij;
 
 	for (int i = start; i < end; i++) {
 		bool valid = true;
 		for (int j = 0; j < ndims; j++) {
-			tmp = positions[i*ndims + j];
+			float tmp = positions[i*ndims + j];
 			if (!normalized) {
 				tmp /= grid_dim[j];
 			}
@@ -129,18 +117,16 @@ void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh,
 		}
 
 		for (int j = 0; j < n_neigh; j++) {
-			reduce = j;
-			Wij = 1;
+			int reduce = j;
+			float Wij = 1;
+
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[k] + 1)) / 2 + (reduce % (K[k] + 1));
-				int current = idx[k] + offset;
-				float x = shift[k] - offset;
-				current = fmin(fmax(current, 0), grid_dim[k] - 1);
 
 				for (int l = 0; l < channels; l++) {
-					indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? current : 0;
+					indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1) : 0;
 				}
-				Wij *= kernel_cpu(x, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
+				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
@@ -153,7 +139,7 @@ void spline_grid_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh,
 }
 
 template<typename T>
-struct SplineGridGradientFunctor<Eigen::ThreadPoolDevice, T> {
+struct SplineGridGradientFunctor<CPU, T> {
 	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float* grad, int *indices, float *values) {
 
 		int ndims = grid.ndims();
@@ -165,7 +151,7 @@ struct SplineGridGradientFunctor<Eigen::ThreadPoolDevice, T> {
 		std::vector<int> K = grid.K;
 		std::vector<int> dx = grid.dx;
 
-#ifdef MULTITHREAD
+#ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 		Shard(pool->NumThreads(), pool, N, 256, [&](int start, int end) {
 			spline_grid_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, grad, indices, values);
@@ -177,4 +163,4 @@ struct SplineGridGradientFunctor<Eigen::ThreadPoolDevice, T> {
 };
 
 
-template struct SplineGridGradientFunctor<Eigen::ThreadPoolDevice, float>;
+template struct SplineGridGradientFunctor<CPU, float>;
