@@ -21,6 +21,16 @@ REGISTER_OP("SplineGridGradient")
 .Output("indices: int32")
 .Output("values: float32");
 
+REGISTER_OP("SplineGridPositionGradient")
+.Input("positions: float32")
+.Input("coefficients: float32")
+.Input("gradients: float32")
+.Attr("order: list(int) = []")
+.Attr("dx: list(int) = []")
+.Attr("normalized: bool = true")
+.Attr("debug: bool = false")
+.Output("grad: float32");
+
 
 
 template<::DeviceType Device>
@@ -98,8 +108,6 @@ public:
 
 };
 
-
-
 template<::DeviceType Device>
 class SplineGridGradientOp : public OpKernel {
 private:
@@ -175,10 +183,82 @@ public:
 
 };
 
+template<::DeviceType Device>
+class SplineGridPositionGradientOp : public OpKernel {
+private:
+	std::vector<int> K;
+	std::vector<int> dx;
+	bool normalized;
+	bool debug;
+public:
+	explicit SplineGridPositionGradientOp(OpKernelConstruction* context) : OpKernel(context) {
+		context->GetAttr("order", &K);
+		context->GetAttr("dx", &dx);
+		context->GetAttr("normalized", &normalized);
+		context->GetAttr("debug", &debug);
+	}
+
+	void Compute(OpKernelContext* context) override {
+		const Tensor &positions = context->input(0);
+		const Tensor &coefficients = context->input(1);
+		const Tensor& grad = context->input(2);
+
+
+		auto positions_flat = positions.flat<float>();
+		auto coefficients_flat = coefficients.flat<float>();
+		auto grad_flat = grad.flat<float>();
+
+		auto shape = coefficients.shape();
+
+
+		int NDIMS = positions.dim_size(positions.dims() - 1);
+		int NCHAN = shape.dim_size(shape.dims() - 1);
+		int N = positions_flat.size() / NDIMS;
+		if (K.size() == 0) {
+			K.resize(NDIMS, DEFAULT_ORDER);
+		}
+		if (dx.size() == 0) {
+			dx.resize(NDIMS, 0);
+		}
+
+		Grid grid;
+		for (int i = 0; i < NDIMS; i++) {
+			grid.K.push_back(K[i]);
+			grid.dims.push_back(shape.dim_size(i));
+			grid.dx.push_back(dx[i]);
+		}
+		grid.channels = NCHAN;
+		grid.normalized = normalized;
+		int n_neigh = grid.neighbors();
+
+		Tensor *result = NULL;
+
+		OP_REQUIRES_OK(context, context->allocate_output(0, positions.shape(),
+			&result));
+
+
+		auto result_flat = result->flat<float>();
+		auto start = std::chrono::high_resolution_clock::now();
+		SplineGridPositionGradientFunctor<Device>()(context,
+			grid, N,
+			positions_flat.data(),
+			coefficients_flat.data(),
+			grad_flat.data(),
+			result_flat.data());
+
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - start;
+		if (debug) {
+			std::cout << "Gradient performance: " << N * n_neigh*NCHAN / elapsed.count() << "C/s" << std::endl;
+		}
+	}
+
+};
+
 
 REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<CPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_CPU), SplineGridGradientOp<CPU>);
-
+REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_CPU), SplineGridPositionGradientOp<CPU>);
 
 #ifdef USE_GPU
 REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<GPU>);

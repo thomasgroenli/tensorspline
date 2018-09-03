@@ -94,3 +94,8 @@ template<::DeviceType Device, typename T = float>
 struct SplineGridGradientFunctor {
 	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, int *, float *);
 };
+
+template<::DeviceType Device, typename T = float>
+struct SplineGridPositionGradientFunctor {
+	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
+};

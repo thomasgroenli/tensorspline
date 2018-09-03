@@ -30,7 +30,6 @@ execute_process(COMMAND python -c "import sys,tensorflow; sys.stdout.write(tenso
 
 MESSAGE( STATUS "TF_LIBRARY:         " ${TF_LIBRARY} )
 
-
 set(splines_srcs
 	"src/splines.cc"
 )
