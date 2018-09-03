@@ -195,15 +195,8 @@ void spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int
 			directional_diff[j] = 0;
 		}
 
-		for (int j = 0; j < ndims; j++) {
-			Wijs[j] = 0;
-			dWijs[j] = 0;
-		}
-
-
 		for (int j = 0; j < n_neigh; j++) {
 			int reduce = j;
-			float Wij = 1;
 			int flat = 0;
 
 			for (int k = ndims - 1; k >= 0; k--) {

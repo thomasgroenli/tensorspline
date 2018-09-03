@@ -263,4 +263,5 @@ REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_CPU), S
 #ifdef USE_GPU
 REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<GPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_GPU), SplineGridGradientOp<GPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_GPU), SplineGridPositionGradientOp<GPU>);
 #endif
