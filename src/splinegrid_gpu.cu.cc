@@ -2,7 +2,6 @@
 
 #define THREADS 64
 
-
 //GPU specialization of actual computation.
 __device__
 float kernel_gpu(float x, int p, int dx, float *tmp) {
@@ -22,7 +21,6 @@ float kernel_gpu(float x, int p, int dx, float *tmp) {
 	}
 	return tmp[0];
 }
-
 
 __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, float fill_value, bool normalized, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, float *out) {
 

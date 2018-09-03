@@ -73,11 +73,11 @@ public:
 		int NDIMS = positions.dim_size(positions.dims() - 1);
 		int NCHAN = coefficients.dim_size(coefficients.dims() - 1);
 		int N = positions_flat.size() / NDIMS;
-		if (K.size() == 0) {
-			K.resize(NDIMS, DEFAULT_ORDER);
+		while (K.size() < NDIMS) {
+			K.push_back(DEFAULT_ORDER);
 		}
-		if (dx.size() == 0) {
-			dx.resize(NDIMS, 0);
+		while (dx.size() < NDIMS) {
+			dx.push_back(0);
 		}
 
 		Grid grid;
@@ -138,11 +138,11 @@ public:
 		int NDIMS = positions.dim_size(positions.dims() - 1);
 		int NCHAN = shape.dim_size(shape.dims() - 1);
 		int N = positions_flat.size() / NDIMS;
-		if (K.size() == 0) {
-			K.resize(NDIMS, DEFAULT_ORDER);
+		while (K.size() < NDIMS) {
+			K.push_back(DEFAULT_ORDER);
 		}
-		if (dx.size() == 0) {
-			dx.resize(NDIMS, 0);
+		while (dx.size() < NDIMS) {
+			dx.push_back(0);
 		}
 
 		Grid grid;
@@ -214,11 +214,11 @@ public:
 		int NDIMS = positions.dim_size(positions.dims() - 1);
 		int NCHAN = shape.dim_size(shape.dims() - 1);
 		int N = positions_flat.size() / NDIMS;
-		if (K.size() == 0) {
-			K.resize(NDIMS, DEFAULT_ORDER);
+		while (K.size() < NDIMS) {
+			K.push_back(DEFAULT_ORDER);
 		}
-		if (dx.size() == 0) {
-			dx.resize(NDIMS, 0);
+		while (dx.size() < NDIMS) {
+			dx.push_back(0);
 		}
 
 		Grid grid;
