@@ -147,7 +147,7 @@ template struct SplineGridFunctor<GPU, float>;
 
 //GPU specialization of actual computation.
 
-__global__ void spline_grid_gradient_kernel_gpu(int N, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *grad, int *indices, float *values) {
+__global__ void spline_grid_coefficient_gradient_kernel_gpu(int N, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *grad, int *indices, float *values) {
 
 	extern __shared__ int shared_info[];
 	int *grid_dim = shared_info;
@@ -211,7 +211,7 @@ __global__ void spline_grid_gradient_kernel_gpu(int N, int ndims, int n_neigh, i
 }
 
 template<typename T>
-struct SplineGridGradientFunctor<GPU, T> {
+struct SplineGridCoefficientGradientFunctor<GPU, T> {
 	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *grad, int *indices, float *values) {
 
 		int ndims = grid.ndims();
@@ -243,7 +243,7 @@ struct SplineGridGradientFunctor<GPU, T> {
 		shared_size += (max_order + 1) * THREADS * sizeof(float);
 
 		// Enqueue kernel
-		spline_grid_gradient_kernel_gpu<<<80, THREADS, shared_size>>> (N, ndims, n_neigh, channels, normalized, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, grad, indices, values);
+		spline_grid_coefficient_gradient_kernel_gpu<<<80, THREADS, shared_size>>> (N, ndims, n_neigh, channels, normalized, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, grad, indices, values);
 
 		// Free resources
 		cudaFree(grid_dim_ptr);
@@ -255,12 +255,12 @@ struct SplineGridGradientFunctor<GPU, T> {
 };
 
 
-template struct SplineGridGradientFunctor<GPU, float>;
+template struct SplineGridCoefficientGradientFunctor<GPU, float>;
 
 
 
 
-__global__ void spline_grid_gradient_kernel_gpu(int N, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, const float *grad, float *result) {
+__global__ void spline_grid_position_gradient_kernel_gpu(int N, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const float *positions, const float *coefficients, const float *grad, float *result) {
 
 	extern __shared__ int shared_info[];
 	int *grid_dim = shared_info;
@@ -381,7 +381,7 @@ struct SplineGridPositionGradientFunctor<GPU, T> {
 		shared_size += (ndims)* THREADS * sizeof(float);
 		shared_size += (ndims)* THREADS * sizeof(float);
 		// Enqueue kernel
-		spline_grid_gradient_kernel_gpu << <80, THREADS, shared_size >> > (N, ndims, n_neigh, channels, normalized, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, coefficients, grad, result);
+		spline_grid_position_gradient_kernel_gpu << <80, THREADS, shared_size >> > (N, ndims, n_neigh, channels, normalized, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, positions, coefficients, grad, result);
 
 		// Free resources
 		cudaFree(grid_dim_ptr);

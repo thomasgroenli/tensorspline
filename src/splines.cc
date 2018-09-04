@@ -10,7 +10,7 @@ REGISTER_OP("SplineGrid")
 .Output("interpolation: float32");
 
 
-REGISTER_OP("SplineGridGradient")
+REGISTER_OP("SplineGridCoefficientGradient")
 .Input("positions: float32")
 .Input("gradients: float32")
 .Attr("coeff_shape: shape")
@@ -109,7 +109,7 @@ public:
 };
 
 template<::DeviceType Device>
-class SplineGridGradientOp : public OpKernel {
+class SplineGridCoefficientGradientOp : public OpKernel {
 private:
 	TensorShapeProto coeff_shape;
 	std::vector<int> K;
@@ -117,7 +117,7 @@ private:
 	bool normalized;
 	bool debug;
 public:
-	explicit SplineGridGradientOp(OpKernelConstruction* context) : OpKernel(context) {
+	explicit SplineGridCoefficientGradientOp(OpKernelConstruction* context) : OpKernel(context) {
 		context->GetAttr("coeff_shape", &coeff_shape);
 		context->GetAttr("order", &K);
 		context->GetAttr("dx", &dx);
@@ -167,7 +167,7 @@ public:
 		auto indices_flat = indices->flat<int>();
 		auto values_flat = values->flat<float>();
 		auto start = std::chrono::high_resolution_clock::now();
-		SplineGridGradientFunctor<Device>()(context,
+		SplineGridCoefficientGradientFunctor<Device>()(context,
 			grid, N,
 			positions_flat.data(),
 			grad_flat.data(),
@@ -257,11 +257,11 @@ public:
 
 
 REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<CPU>);
-REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_CPU), SplineGridGradientOp<CPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_CPU), SplineGridCoefficientGradientOp<CPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_CPU), SplineGridPositionGradientOp<CPU>);
 
 #ifdef USE_GPU
 REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<GPU>);
-REGISTER_KERNEL_BUILDER(Name("SplineGridGradient").Device(DEVICE_GPU), SplineGridGradientOp<GPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_GPU), SplineGridCoefficientGradientOp<GPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_GPU), SplineGridPositionGradientOp<GPU>);
 #endif

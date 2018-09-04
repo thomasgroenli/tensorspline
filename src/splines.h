@@ -91,7 +91,7 @@ struct SplineGridFunctor {
 };
 
 template<::DeviceType Device, typename T = float>
-struct SplineGridGradientFunctor {
+struct SplineGridCoefficientGradientFunctor {
 	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, int *, float *);
 };
 
