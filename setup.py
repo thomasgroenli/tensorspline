@@ -10,6 +10,6 @@ setup(name='TensorSpline',
       author='Thomas Grønli',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],
-
+      install_requires=['tensorflow-gpu'],
       package_data={'tensorspline': ['./lib/splines.'+suffix]}
      )
