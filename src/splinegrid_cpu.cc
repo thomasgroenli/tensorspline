@@ -19,7 +19,7 @@ float kernel_cpu(float x, int p, int dx, float *tmp) {
 	return tmp[0];
 }
 
-void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, float fill_value, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *coefficients, float *out) {
+void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, float fill_value, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *coefficients, float *out) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
 	float *channel_sum = new float[channels];
@@ -34,10 +34,13 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 		for (int j = 0; j < ndims; j++) {
 			float tmp = positions[i*ndims + j];
 			if (!normalized) {
-				tmp /= grid_dim[j];
+				tmp /= grid_dim[j] + periodic[j] - 1;
+			}
+			if (periodic[j]) {
+				tmp = fmod(tmp,1) + (tmp < 0);
 			}
 			valid &= (0 <= tmp && tmp <= 1);
-			shift[j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
+			shift[j] = modff(tmp*(grid_dim[j] + periodic[j] - 1) + 0.5, &tmp) - 0.5;
 			idx[j] = tmp;
 		}
 		for (int j = 0; j < channels; j++) {
@@ -51,8 +54,13 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[k] + 1)) / 2 + (reduce % (K[k] + 1));
 
-				flat += strides[k] * fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1);
-				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
+				if (periodic[k]) {
+					flat += strides[k] * ((idx[k] + offset + grid_dim[k]) % grid_dim[k]);
+				}
+				else {
+					flat += strides[k] * fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1);
+				}
+				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(normalized*dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
@@ -79,21 +87,22 @@ struct SplineGridFunctor<CPU, T> {
 		std::vector<int> grid_dim = grid.dims;
 		std::vector<int> K = grid.K;
 		std::vector<int> dx = grid.dx;
+		std::vector<int> periodic = grid.periodic;
 
 #ifdef MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 		Shard(pool->NumThreads(), pool, N, 128, [&](int start, int end) {
-			spline_grid_kernel_cpu(start, end, ndims, n_neigh, channels, fill_value, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, coefficients, out);
+			spline_grid_kernel_cpu(start, end, ndims, n_neigh, channels, fill_value, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, coefficients, out);
 		});
 #else
-		spline_grid_kernel_cpu(0, N, ndims, n_neigh, channels, fill_value, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, coefficients, out);
+		spline_grid_kernel_cpu(0, N, ndims, n_neigh, channels, fill_value, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, coefficients, out);
 #endif
 	}
 };
 
 template struct SplineGridFunctor<CPU, float>;
 
-void spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *grad, int *indices, float *values) {
+void spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *grad, int *indices, float *values) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
 
@@ -109,10 +118,13 @@ void spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, 
 		for (int j = 0; j < ndims; j++) {
 			float tmp = positions[i*ndims + j];
 			if (!normalized) {
-				tmp /= grid_dim[j];
+				tmp /= grid_dim[j] + periodic[j] - 1;
+			}
+			if (periodic[j]) {
+				tmp = fmod(tmp, 1) + (tmp < 0);
 			}
 			valid &= (0 <= tmp && tmp <= 1);
-			shift[j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
+			shift[j] = modff(tmp*(grid_dim[j] + periodic[j] - 1) + 0.5, &tmp) - 0.5;
 			idx[j] = tmp;
 		}
 
@@ -124,9 +136,14 @@ void spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, 
 				int offset = -(K[k] + 1 - int(shift[k] + 1)) / 2 + (reduce % (K[k] + 1));
 
 				for (int l = 0; l < channels; l++) {
-					indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1) : 0;
+					if (periodic[k]) {
+						indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? ((idx[k] + offset + grid_dim[k]) % grid_dim[k]) : 0;
+					}
+					else {
+						indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1) : 0;
+					}
 				}
-				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
+				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(normalized*dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
@@ -150,14 +167,15 @@ struct SplineGridCoefficientGradientFunctor<CPU, T> {
 		std::vector<int> grid_dim = grid.dims;
 		std::vector<int> K = grid.K;
 		std::vector<int> dx = grid.dx;
+		std::vector<int> periodic = grid.periodic;
 
 #ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 		Shard(pool->NumThreads(), pool, N, 256, [&](int start, int end) {
-			spline_grid_coefficient_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, grad, indices, values);
+			spline_grid_coefficient_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, grad, indices, values);
 		});
 #else
-		spline_grid_coefficient_gradient_kernel_cpu(0, N, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, grad, indices, values);
+		spline_grid_coefficient_gradient_kernel_cpu(0, N, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, grad, indices, values);
 #endif
 	}
 };
@@ -165,7 +183,7 @@ struct SplineGridCoefficientGradientFunctor<CPU, T> {
 
 template struct SplineGridCoefficientGradientFunctor<CPU, float>;
 
-void spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const float *positions, const float *coefficients, const float *grad, float *result) {
+void spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, bool normalized, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *coefficients, const float *grad, float *result) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
 
@@ -184,10 +202,13 @@ void spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int
 		for (int j = 0; j < ndims; j++) {
 			float tmp = positions[i*ndims + j];
 			if (!normalized) {
-				tmp /= grid_dim[j];
+				tmp /= grid_dim[j] + periodic[j] - 1;
+			}
+			if (periodic[j]) {
+				tmp = fmod(tmp, 1) + (tmp < 0);
 			}
 			valid &= (0 <= tmp && tmp <= 1);
-			shift[j] = modff(tmp*(grid_dim[j] - 1) + 0.5, &tmp) - 0.5;
+			shift[j] = modff(tmp*(grid_dim[j] + periodic[j] - 1) + 0.5, &tmp) - 0.5;
 			idx[j] = tmp;
 		}
 
@@ -201,10 +222,14 @@ void spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int
 
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[k] + 1)) / 2 + (reduce % (K[k] + 1));
-
-				flat += strides[k] * fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1);
-				Wijs[k] = kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(normalized*dx[k]));
-				dWijs[k] = kernel_cpu(shift[k] - offset, K[k], dx[k]+1, kernel_tmp)*powf(grid_dim[k], float(normalized*(dx[k]+1)));
+				if (periodic[k]) {
+					flat += strides[k] * ((idx[k] + offset + grid_dim[k]) % grid_dim[k]);
+				}
+				else {
+					flat += strides[k] * fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1);
+				}
+				Wijs[k] = kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(normalized*dx[k]));
+				dWijs[k] = kernel_cpu(shift[k] - offset, K[k], dx[k]+1, kernel_tmp)*powf(grid_dim[k]+periodic[k], float(normalized*(dx[k]+1)));
 				reduce /= K[k] + 1;
 			}
 
@@ -240,14 +265,15 @@ struct SplineGridPositionGradientFunctor<CPU, T> {
 		std::vector<int> grid_dim = grid.dims;
 		std::vector<int> K = grid.K;
 		std::vector<int> dx = grid.dx;
+		std::vector<int> periodic = grid.periodic;
 
 #ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 		Shard(pool->NumThreads(), pool, N, 256, [&](int start, int end) {
-			spline_grid_position_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, coefficients, grad, result);
+			spline_grid_position_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, coefficients, grad, result);
 		});
 #else
-		spline_grid_position_gradient_kernel_cpu(0, N, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), positions, coefficients, grad, result);
+		spline_grid_position_gradient_kernel_cpu(0, N, ndims, n_neigh, channels, normalized, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, coefficients, grad, result);
 #endif
 
 	}

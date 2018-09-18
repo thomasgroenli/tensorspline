@@ -19,6 +19,7 @@ struct Grid {
 	std::vector<int> K; // Spline orders
 	std::vector<int> dims;
 	std::vector<int> dx;
+	std::vector<int> periodic;
 	float fill_value;
 	bool normalized;
 	int channels;
