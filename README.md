@@ -32,7 +32,7 @@ Optional
 
 - ``dx``: Differentiation orders, list of ints length <= d, defaults to 0
 
-- ``periodic``: Grid periodicity, list of ints or bools length <= d, defaults to 0
+- ``periodic``: Grid periodicity, list of bools length <= d, defaults to 0
 
 - ``fill_value``: Fill value for out-of-grid queries
 
