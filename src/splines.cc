@@ -6,7 +6,6 @@ REGISTER_OP("SplineGrid")
 .Attr("dx: list(int) = []")
 .Attr("periodic: list(int) = []")
 .Attr("fill_value: float = 0")
-.Attr("normalized: bool = true")
 .Attr("debug: bool = false")
 .Output("interpolation: float32");
 
@@ -18,7 +17,6 @@ REGISTER_OP("SplineGridCoefficientGradient")
 .Attr("order: list(int) = []")
 .Attr("dx: list(int) = []")
 .Attr("periodic: list(int) = []")
-.Attr("normalized: bool = true")
 .Attr("debug: bool = false")
 .Output("indices: int32")
 .Output("values: float32");
@@ -30,7 +28,6 @@ REGISTER_OP("SplineGridPositionGradient")
 .Attr("order: list(int) = []")
 .Attr("dx: list(int) = []")
 .Attr("periodic: list(int) = []")
-.Attr("normalized: bool = true")
 .Attr("debug: bool = false")
 .Output("grad: float32");
 
@@ -43,7 +40,6 @@ private:
 	std::vector<int> dx;
 	std::vector<int> periodic;
 	float fill_value;
-	bool normalized;
 	bool debug;
 public:
 	explicit SplineGridOp(OpKernelConstruction* context) : OpKernel(context) {
@@ -51,7 +47,6 @@ public:
 		context->GetAttr("dx", &dx);
 		context->GetAttr("periodic", &periodic);
 		context->GetAttr("fill_value", &fill_value);
-		context->GetAttr("normalized", &normalized);
 		context->GetAttr("debug", &debug);
 	}
 
@@ -67,7 +62,6 @@ public:
 		Tensor *interpolation = NULL;
 		OP_REQUIRES_OK(context, context->allocate_output(0, shape,
 			&interpolation));
-
 
 
 		auto positions_flat = positions.flat<float>();
@@ -97,7 +91,6 @@ public:
 		}
 		grid.channels = NCHAN;
 		grid.fill_value = fill_value;
-		grid.normalized = normalized;
 		int n_neigh = grid.neighbors();
 
 		OP_REQUIRES(context, positions.dim_size(positions.dims() - 1) == coefficients.dims() - 1,
@@ -124,7 +117,6 @@ private:
 	std::vector<int> K;
 	std::vector<int> dx;
 	std::vector<int> periodic;
-	bool normalized;
 	bool debug;
 public:
 	explicit SplineGridCoefficientGradientOp(OpKernelConstruction* context) : OpKernel(context) {
@@ -132,7 +124,6 @@ public:
 		context->GetAttr("order", &K);
 		context->GetAttr("dx", &dx);
 		context->GetAttr("periodic", &periodic);
-		context->GetAttr("normalized", &normalized);
 		context->GetAttr("debug", &debug);
 	}
 
@@ -168,7 +159,6 @@ public:
 			grid.periodic.push_back(periodic[i]);
 		}
 		grid.channels = NCHAN;
-		grid.normalized = normalized;
 		int n_neigh = grid.neighbors();
 
 		Tensor *indices = NULL;
@@ -205,14 +195,12 @@ private:
 	std::vector<int> K;
 	std::vector<int> dx;
 	std::vector<int> periodic;
-	bool normalized;
 	bool debug;
 public:
 	explicit SplineGridPositionGradientOp(OpKernelConstruction* context) : OpKernel(context) {
 		context->GetAttr("order", &K);
 		context->GetAttr("dx", &dx);
 		context->GetAttr("periodic", &periodic);
-		context->GetAttr("normalized", &normalized);
 		context->GetAttr("debug", &debug);
 	}
 
@@ -251,7 +239,6 @@ public:
 			grid.periodic.push_back(periodic[i]);
 		}
 		grid.channels = NCHAN;
-		grid.normalized = normalized;
 		int n_neigh = grid.neighbors();
 
 		Tensor *result = NULL;

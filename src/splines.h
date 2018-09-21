@@ -21,7 +21,6 @@ struct Grid {
 	std::vector<int> dx;
 	std::vector<int> periodic;
 	float fill_value;
-	bool normalized;
 	int channels;
 
 
@@ -80,7 +79,6 @@ struct Grid {
 		std::cout << std::endl;
 		std::cout << "Max order: " << maxorder() << std::endl;
 		std::cout << "Fill value: " << fill_value << std::endl;
-		std::cout << "Normalized: " << normalized << std::endl;
 	}
 };
 
