@@ -36,7 +36,6 @@ Optional
 
 - ``fill_value``: Fill value for out-of-grid queries
 
-- ``normalized``: When True, use grid query positions normalized to [0,1]
 
 Returns
 
