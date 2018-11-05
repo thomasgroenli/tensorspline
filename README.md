@@ -18,7 +18,7 @@ OR build from source.
 ### Reference
 The available function has the following signature  
 
-- ``interpolation = spline_grid(positions, coefficients, order=[], dx=[], periodic=[], fill_value=0, normalized=True)``
+- ``interpolation = spline_grid(positions, coefficients, order=[], dx=[], periodic=[], fill_value=0)``
 
 Required
 
@@ -36,7 +36,6 @@ Optional
 
 - ``fill_value``: Fill value for out-of-grid queries
 
-- ``normalized``: When True, use grid query positions normalized to [0,1]
 
 Returns
 
