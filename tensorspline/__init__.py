@@ -1,6 +1,15 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
 import os
+
+
+from functools import reduce
+from operator import mul
+
+def prod(iterable):
+    return reduce(mul, iterable)
+
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -24,3 +33,24 @@ try:
 except KeyError:
     pass
 
+
+
+
+class SplineInterpolator:
+    def __init__(self, C, order=[], periodic=[],extents=[]):
+        self.C = C
+        self.order = order
+        self.periodic = periodic
+        self.extents = extents
+
+    def __call__(self, x):
+        return spline_grid(x,self.C,order=self.order,periodic=self.periodic)
+
+    @property
+    def dx(self):
+        class D:
+            def __getitem__(subself,dx):
+                return lambda x: spline_grid(x,self.C,order=self.order,periodic=self.periodic,dx=dx)/\
+                prod(self.extents[i]**dx[i] for i in range(len(dx)))
+
+        return D()
