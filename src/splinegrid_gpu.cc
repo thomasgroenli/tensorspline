@@ -1,6 +1,14 @@
 #include "splines.h"
-
+#include <cuda.h>
+#include <nvrtc.h>
+#include <cuda_runtime.h>
 #define THREADS 64
+#include <iostream>
+#include <sstream>
+#include <fstream>
+
+
+const char *kernels = R"(
 
 //GPU specialization of actual computation.
 __device__
@@ -22,6 +30,7 @@ float kernel_gpu(float x, int p, int dx, float *tmp) {
 	return tmp[0];
 }
 
+extern "C" {
 __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const int *periodic_ptr, const float *positions, const float *coefficients, float *out) {
 
 	extern __shared__ int shared_info[];
@@ -102,62 +111,6 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 	}
 }
 
-template<typename T>
-struct SplineGridFunctor<GPU, T> {
-	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, float *out) {
-
-
-		int ndims = grid.ndims();
-		int n_neigh = grid.neighbors();
-		int channels = grid.channels;
-		int max_order = grid.maxorder();
-		float fill_value = grid.fill_value;
-		std::vector<int> strides = grid.strides();
-		std::vector<int> grid_dim = grid.dims;
-		std::vector<int> K = grid.K;
-		std::vector<int> dx = grid.dx;
-		std::vector<int> periodic = grid.periodic;
-
-		int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr, *periodic_ptr;
-
-		cudaMalloc(&grid_dim_ptr, ndims * sizeof(int));
-		cudaMalloc(&strides_ptr, ndims * sizeof(int));
-		cudaMalloc(&K_ptr, ndims * sizeof(int));
-		cudaMalloc(&dx_ptr, ndims * sizeof(int));
-		cudaMalloc(&periodic_ptr, ndims * sizeof(int));
-
-		cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-
-		// Compute shared memory size
-		int shared_size = 5 * ndims * sizeof(int);
-		shared_size += ndims * THREADS * sizeof(int);
-		shared_size += ndims * THREADS * sizeof(float);
-		shared_size += channels * THREADS * sizeof(float);
-		shared_size += (max_order + 1) * THREADS * sizeof(float);
-
-		// Enqueue kernel
-		spline_grid_kernel_gpu<<<80, THREADS, shared_size>>> (N, ndims, n_neigh, channels, fill_value, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr, positions, coefficients, out);
-
-
-		// Free resources
-		cudaFree(grid_dim_ptr);
-		cudaFree(strides_ptr);
-		cudaFree(K_ptr);
-		cudaFree(dx_ptr);
-		cudaFree(periodic_ptr);
-	}
-
-};
-
-
-template struct SplineGridFunctor<GPU, float>;
-
-//GPU specialization of actual computation.
-
 __global__ void spline_grid_coefficient_gradient_kernel_gpu(int N, int ndims, int n_neigh, int channels, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const int *periodic_ptr, const float *positions, const float *grad, int *indices, float *values) {
 
 	extern __shared__ int shared_info[];
@@ -228,59 +181,6 @@ __global__ void spline_grid_coefficient_gradient_kernel_gpu(int N, int ndims, in
 		}
 	}
 }
-
-template<typename T>
-struct SplineGridCoefficientGradientFunctor<GPU, T> {
-	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *grad, int *indices, float *values) {
-
-		int ndims = grid.ndims();
-		int n_neigh = grid.neighbors();
-		int channels = grid.channels;
-		int max_order = grid.maxorder();
-		std::vector<int> strides = grid.strides();
-		std::vector<int> grid_dim = grid.dims;
-		std::vector<int> K = grid.K;
-		std::vector<int> dx = grid.dx;
-		std::vector<int> periodic = grid.periodic;
-
-		int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr, *periodic_ptr;
-
-		cudaMalloc(&grid_dim_ptr, ndims * sizeof(int));
-		cudaMalloc(&strides_ptr, ndims * sizeof(int));
-		cudaMalloc(&K_ptr, ndims * sizeof(int));
-		cudaMalloc(&dx_ptr, ndims * sizeof(int));
-		cudaMalloc(&periodic_ptr, ndims * sizeof(int));
-
-		cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-
-		// Compute shared memory size
-		int shared_size = 5 * ndims * sizeof(int);
-		shared_size += ndims * THREADS * sizeof(int);
-		shared_size += ndims * THREADS * sizeof(float);
-		shared_size += (max_order + 1) * THREADS * sizeof(float);
-
-		// Enqueue kernel
-		spline_grid_coefficient_gradient_kernel_gpu<<<80, THREADS, shared_size>>> (N, ndims, n_neigh, channels, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr, positions, grad, indices, values);
-
-		// Free resources
-		cudaFree(grid_dim_ptr);
-		cudaFree(strides_ptr);
-		cudaFree(K_ptr);
-		cudaFree(dx_ptr);
-		cudaFree(periodic_ptr);
-	}
-
-};
-
-
-template struct SplineGridCoefficientGradientFunctor<GPU, float>;
-
-
-
 
 __global__ void spline_grid_position_gradient_kernel_gpu(int N, int ndims, int n_neigh, int channels, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const int *periodic_ptr, const float *positions, const float *coefficients, const float *grad, float *result) {
 
@@ -373,6 +273,175 @@ __global__ void spline_grid_position_gradient_kernel_gpu(int N, int ndims, int n
 	}
 }
 
+} // End extern "C"
+
+)";
+
+template<typename T>
+struct SplineGridFunctor<GPU, T> {
+	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, float *out) {
+
+		std::cout << kernels << std::endl;
+		nvrtcProgram prog;
+		nvrtcCreateProgram(&prog,         // prog
+			kernels,         // buffer
+			"kernels.cu",    // name
+			0,             // numHeaders
+			NULL,          // headers
+			NULL);         // includeNames
+
+		const char *opts[] = { "--gpu-architecture=compute_30",
+					  "--fmad=false" };
+		nvrtcCompileProgram(prog,     // prog
+			2,        // numOptions
+			opts);    // options
+
+
+		// Obtain compilation log from the program.
+		size_t logSize;
+		nvrtcGetProgramLogSize(prog, &logSize);
+		char *log = new char[logSize];
+		nvrtcGetProgramLog(prog, log);
+		// Obtain PTX from the program.
+		size_t ptxSize;
+		nvrtcGetPTXSize(prog, &ptxSize);
+		char *ptx = new char[ptxSize];
+		nvrtcGetPTX(prog, ptx);
+
+		std::cout << log << std::endl;
+
+		nvrtcDestroyProgram(&prog);
+
+		int ndims = grid.ndims();
+		int n_neigh = grid.neighbors();
+		int channels = grid.channels;
+		int max_order = grid.maxorder();
+		float fill_value = grid.fill_value;
+		std::vector<int> strides = grid.strides();
+		std::vector<int> grid_dim = grid.dims;
+		std::vector<int> K = grid.K;
+		std::vector<int> dx = grid.dx;
+		std::vector<int> periodic = grid.periodic;
+
+		int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr, *periodic_ptr;
+
+		cudaMalloc(&grid_dim_ptr, ndims * sizeof(int));
+		cudaMalloc(&strides_ptr, ndims * sizeof(int));
+		cudaMalloc(&K_ptr, ndims * sizeof(int));
+		cudaMalloc(&dx_ptr, ndims * sizeof(int));
+		cudaMalloc(&periodic_ptr, ndims * sizeof(int));
+
+		cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+
+		// Compute shared memory size
+		int shared_size = 5 * ndims * sizeof(int);
+		shared_size += ndims * THREADS * sizeof(int);
+		shared_size += ndims * THREADS * sizeof(float);
+		shared_size += channels * THREADS * sizeof(float);
+		shared_size += (max_order + 1) * THREADS * sizeof(float);
+
+		CUmodule module;
+		CUfunction kernel;
+
+		cuModuleLoadDataEx(&module, ptx, 0, 0, 0);
+		cuModuleGetFunction(&kernel, module, "spline_grid_kernel_gpu");
+
+		void *args[] = { &N, 
+			&ndims, 
+			&n_neigh, 
+			&channels, 
+			&fill_value, 
+			&grid_dim_ptr, 
+			&strides_ptr, 
+			&K_ptr, 
+			&dx_ptr, 
+			&periodic_ptr, 
+			&positions, 
+			&coefficients, 
+			&out };
+		cuLaunchKernel(kernel,
+			THREADS, 1, 1,   // grid dim
+			80, 1, 1,    // block dim
+			shared_size, NULL,             // shared mem and stream
+			args,                // arguments
+			0);
+		cuCtxSynchronize();
+		// Enqueue kernel
+		//spline_grid_kernel_gpu<<<80, THREADS, shared_size>>> (N, ndims, n_neigh, channels, fill_value, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr, positions, coefficients, out);
+
+
+		// Free resources
+		cudaFree(grid_dim_ptr);
+		cudaFree(strides_ptr);
+		cudaFree(K_ptr);
+		cudaFree(dx_ptr);
+		cudaFree(periodic_ptr);
+	}
+
+};
+
+
+template struct SplineGridFunctor<GPU, float>;
+
+
+
+template<typename T>
+struct SplineGridCoefficientGradientFunctor<GPU, T> {
+	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *grad, int *indices, float *values) {
+
+		int ndims = grid.ndims();
+		int n_neigh = grid.neighbors();
+		int channels = grid.channels;
+		int max_order = grid.maxorder();
+		std::vector<int> strides = grid.strides();
+		std::vector<int> grid_dim = grid.dims;
+		std::vector<int> K = grid.K;
+		std::vector<int> dx = grid.dx;
+		std::vector<int> periodic = grid.periodic;
+
+		int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr, *periodic_ptr;
+
+		cudaMalloc(&grid_dim_ptr, ndims * sizeof(int));
+		cudaMalloc(&strides_ptr, ndims * sizeof(int));
+		cudaMalloc(&K_ptr, ndims * sizeof(int));
+		cudaMalloc(&dx_ptr, ndims * sizeof(int));
+		cudaMalloc(&periodic_ptr, ndims * sizeof(int));
+
+		cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+
+		// Compute shared memory size
+		int shared_size = 5 * ndims * sizeof(int);
+		shared_size += ndims * THREADS * sizeof(int);
+		shared_size += ndims * THREADS * sizeof(float);
+		shared_size += (max_order + 1) * THREADS * sizeof(float);
+
+		// Enqueue kernel
+		//spline_grid_coefficient_gradient_kernel_gpu<<<80, THREADS, shared_size>>> (N, ndims, n_neigh, channels, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr, positions, grad, indices, values);
+
+		// Free resources
+		cudaFree(grid_dim_ptr);
+		cudaFree(strides_ptr);
+		cudaFree(K_ptr);
+		cudaFree(dx_ptr);
+		cudaFree(periodic_ptr);
+	}
+
+};
+
+
+template struct SplineGridCoefficientGradientFunctor<GPU, float>;
+
+
+
+
 
 
 template<typename T>
@@ -412,7 +481,7 @@ struct SplineGridPositionGradientFunctor<GPU, T> {
 		shared_size += (ndims)* THREADS * sizeof(float);
 		shared_size += (ndims)* THREADS * sizeof(float);
 		// Enqueue kernel
-		spline_grid_position_gradient_kernel_gpu << <80, THREADS, shared_size >> > (N, ndims, n_neigh, channels, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr, positions, coefficients, grad, result);
+		//spline_grid_position_gradient_kernel_gpu << <80, THREADS, shared_size >> > (N, ndims, n_neigh, channels, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr, positions, coefficients, grad, result);
 
 		// Free resources
 		cudaFree(grid_dim_ptr);

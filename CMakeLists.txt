@@ -14,8 +14,7 @@ endif(ENABLE_MULTITHREAD)
 
 if(ENABLE_GPU)
 find_package(CUDA REQUIRED)
-list(APPEND CUDA_NVCC_FLAGS "--gpu-architecture=sm_52 -expt-relaxed-constexpr")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_GPU")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_GPU")
 endif(ENABLE_GPU)
 
 
@@ -38,7 +37,7 @@ set(splinegrid_srcs
 	"src/splinegrid_cpu.cc"
 )
 set(splinegrid_gpu_srcs
-	"src/splinegrid_gpu.cu.cc"
+	"src/splinegrid_gpu.cc"
 )
 
 
@@ -58,28 +57,11 @@ target_link_libraries(${TARGET} ${TARGET_CPU} ${PYWRAP})
 
 if(ENABLE_GPU)
 set(TARGET_GPU "${TARGET}_gpu")
-set_source_files_properties(${splinegrid_gpu_srcs} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ)
-cuda_add_library(${TARGET_GPU} STATIC ${splinegrid_gpu_srcs})
 
-target_link_libraries(${TARGET} ${CUDA_LIBRARIES} ${TARGET_GPU})
+
+include_directories(${CUDA_INCLUDE_DIRS})
+add_library(${TARGET_GPU} STATIC ${splinegrid_gpu_srcs})
+target_link_libraries(${TARGET} ${CUDA_LIBRARIES} ${TARGET_GPU} "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v9.0/lib/x64/cuda.lib" "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v9.0/lib/x64/nvrtc.lib")
 endif(ENABLE_GPU)
 
 set_target_properties(${TARGET} PROPERTIES PREFIX "")
-
-add_custom_command(
-        TARGET ${TARGET} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/setup.py
-                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/setup.py)
-
-add_custom_command(
-        TARGET ${TARGET} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/tensorspline/__init__.py
-                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/tensorspline/__init__.py)
-
-add_custom_command(
-        TARGET ${TARGET} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/$<TARGET_FILE_NAME:${TARGET}>
-                ${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/tensorspline/lib/$<TARGET_FILE_NAME:${TARGET}>)
