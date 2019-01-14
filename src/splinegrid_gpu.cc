@@ -277,40 +277,58 @@ __global__ void spline_grid_position_gradient_kernel_gpu(int N, int ndims, int n
 
 )";
 
+static CUmodule module;
+static CUfunction kernel;
+static bool compiled = false;
+
+void compile() {
+	//std::cout << kernels << std::endl;
+	nvrtcProgram prog;
+	nvrtcCreateProgram(&prog,         // prog
+		kernels,         // buffer
+		"kernels.cu",    // name
+		0,             // numHeaders
+		NULL,          // headers
+		NULL);         // includeNames
+
+	const char *opts[] = { "--gpu-architecture=compute_30",
+				  "--fmad=false" };
+	nvrtcCompileProgram(prog,     // prog
+		2,        // numOptions
+		opts);    // options
+
+
+	// Obtain compilation log from the program.
+	size_t logSize;
+	nvrtcGetProgramLogSize(prog, &logSize);
+	char *log = new char[logSize];
+	nvrtcGetProgramLog(prog, log);
+	// Obtain PTX from the program.
+	size_t ptxSize;
+	nvrtcGetPTXSize(prog, &ptxSize);
+	char *ptx = new char[ptxSize];
+	nvrtcGetPTX(prog, ptx);
+
+	std::cout << log << std::endl;
+
+	nvrtcDestroyProgram(&prog);
+
+	cuModuleLoadDataEx(&module, ptx, 0, 0, 0);
+	cuModuleGetFunction(&kernel, module, "spline_grid_kernel_gpu");
+	compiled = true;
+}
+
+
+
+
 template<typename T>
 struct SplineGridFunctor<GPU, T> {
 	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, float *out) {
-
-		std::cout << kernels << std::endl;
-		nvrtcProgram prog;
-		nvrtcCreateProgram(&prog,         // prog
-			kernels,         // buffer
-			"kernels.cu",    // name
-			0,             // numHeaders
-			NULL,          // headers
-			NULL);         // includeNames
-
-		const char *opts[] = { "--gpu-architecture=compute_30",
-					  "--fmad=false" };
-		nvrtcCompileProgram(prog,     // prog
-			2,        // numOptions
-			opts);    // options
-
-
-		// Obtain compilation log from the program.
-		size_t logSize;
-		nvrtcGetProgramLogSize(prog, &logSize);
-		char *log = new char[logSize];
-		nvrtcGetProgramLog(prog, log);
-		// Obtain PTX from the program.
-		size_t ptxSize;
-		nvrtcGetPTXSize(prog, &ptxSize);
-		char *ptx = new char[ptxSize];
-		nvrtcGetPTX(prog, ptx);
-
-		std::cout << log << std::endl;
-
-		nvrtcDestroyProgram(&prog);
+		if (!compiled) {
+			std::cout << "Compiling PTX... ";
+			compile();
+			std::cout << "Done!" << std::endl;
+		}
 
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
@@ -343,13 +361,7 @@ struct SplineGridFunctor<GPU, T> {
 		shared_size += ndims * THREADS * sizeof(float);
 		shared_size += channels * THREADS * sizeof(float);
 		shared_size += (max_order + 1) * THREADS * sizeof(float);
-
-		CUmodule module;
-		CUfunction kernel;
-
-		cuModuleLoadDataEx(&module, ptx, 0, 0, 0);
-		cuModuleGetFunction(&kernel, module, "spline_grid_kernel_gpu");
-
+		
 		void *args[] = { &N, 
 			&ndims, 
 			&n_neigh, 
