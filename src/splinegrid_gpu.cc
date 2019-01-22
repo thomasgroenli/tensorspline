@@ -2,7 +2,8 @@
 #include <cuda.h>
 #include <nvrtc.h>
 #include <cuda_runtime.h>
-#define THREADS 64
+#define THREADS 256
+#define BLOCKS 128
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -279,31 +280,33 @@ __global__ void spline_grid_position_gradient_kernel_gpu(int N, int ndims, int n
 
 static CUmodule module;
 static CUfunction kernel;
+static CUfunction kernel_coefficient_gradient;
+static CUfunction kernel_position_gradient;
+
 static bool compiled = false;
 
 void compile() {
-	//std::cout << kernels << std::endl;
+	if (compiled) {
+		return;
+	}
 	nvrtcProgram prog;
-	nvrtcCreateProgram(&prog,         // prog
-		kernels,         // buffer
-		"kernels.cu",    // name
-		0,             // numHeaders
-		NULL,          // headers
-		NULL);         // includeNames
+	nvrtcCreateProgram(&prog,
+		kernels,
+		"kernels.cu",
+		0,
+		NULL,
+		NULL);
 
-	const char *opts[] = { "--gpu-architecture=compute_30",
-				  "--fmad=false" };
-	nvrtcCompileProgram(prog,     // prog
-		2,        // numOptions
-		opts);    // options
+	const char **opts;
+	nvrtcCompileProgram(prog,
+		0,
+		opts);
 
-
-	// Obtain compilation log from the program.
 	size_t logSize;
 	nvrtcGetProgramLogSize(prog, &logSize);
 	char *log = new char[logSize];
 	nvrtcGetProgramLog(prog, log);
-	// Obtain PTX from the program.
+	
 	size_t ptxSize;
 	nvrtcGetPTXSize(prog, &ptxSize);
 	char *ptx = new char[ptxSize];
@@ -315,6 +318,8 @@ void compile() {
 
 	cuModuleLoadDataEx(&module, ptx, 0, 0, 0);
 	cuModuleGetFunction(&kernel, module, "spline_grid_kernel_gpu");
+	cuModuleGetFunction(&kernel_coefficient_gradient, module, "spline_grid_coefficient_gradient_kernel_gpu");
+	cuModuleGetFunction(&kernel_position_gradient, module, "spline_grid_position_gradient_kernel_gpu");
 	compiled = true;
 }
 
@@ -324,12 +329,8 @@ void compile() {
 template<typename T>
 struct SplineGridFunctor<GPU, T> {
 	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, float *out) {
-		if (!compiled) {
-			std::cout << "Compiling PTX... ";
-			compile();
-			std::cout << "Done!" << std::endl;
-		}
-
+		compile();
+		
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
 		int channels = grid.channels;
@@ -362,7 +363,8 @@ struct SplineGridFunctor<GPU, T> {
 		shared_size += channels * THREADS * sizeof(float);
 		shared_size += (max_order + 1) * THREADS * sizeof(float);
 		
-		void *args[] = { &N, 
+		void *args[] = { 
+			&N, 
 			&ndims, 
 			&n_neigh, 
 			&channels, 
@@ -376,15 +378,12 @@ struct SplineGridFunctor<GPU, T> {
 			&coefficients, 
 			&out };
 		cuLaunchKernel(kernel,
-			THREADS, 1, 1,   // grid dim
-			80, 1, 1,    // block dim
-			shared_size, NULL,             // shared mem and stream
-			args,                // arguments
+			THREADS, 1, 1,
+			BLOCKS, 1, 1,
+			shared_size, NULL,
+			args,
 			0);
-		cuCtxSynchronize();
-		// Enqueue kernel
-		//spline_grid_kernel_gpu<<<80, THREADS, shared_size>>> (N, ndims, n_neigh, channels, fill_value, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr, positions, coefficients, out);
-
+		cudaDeviceSynchronize();
 
 		// Free resources
 		cudaFree(grid_dim_ptr);
@@ -404,7 +403,7 @@ template struct SplineGridFunctor<GPU, float>;
 template<typename T>
 struct SplineGridCoefficientGradientFunctor<GPU, T> {
 	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *grad, int *indices, float *values) {
-
+		compile();
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
 		int channels = grid.channels;
@@ -435,8 +434,29 @@ struct SplineGridCoefficientGradientFunctor<GPU, T> {
 		shared_size += ndims * THREADS * sizeof(float);
 		shared_size += (max_order + 1) * THREADS * sizeof(float);
 
-		// Enqueue kernel
-		//spline_grid_coefficient_gradient_kernel_gpu<<<80, THREADS, shared_size>>> (N, ndims, n_neigh, channels, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr, positions, grad, indices, values);
+
+		void *args[] = {
+			&N,
+			&ndims,
+			&n_neigh,
+			&channels,
+			&grid_dim_ptr,
+			&strides_ptr,
+			&K_ptr,
+			&dx_ptr,
+			&periodic_ptr,
+			&positions,
+			&grad,
+			&indices,
+			&values
+		};
+		cuLaunchKernel(kernel_coefficient_gradient,
+			THREADS, 1, 1,
+			BLOCKS, 1, 1,
+			shared_size, NULL,
+			args,
+			0);
+		cudaDeviceSynchronize();
 
 		// Free resources
 		cudaFree(grid_dim_ptr);
@@ -453,13 +473,11 @@ template struct SplineGridCoefficientGradientFunctor<GPU, float>;
 
 
 
-
-
-
 template<typename T>
 struct SplineGridPositionGradientFunctor<GPU, T> {
 	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, const float *grad, float *result) {
-
+		
+		compile();
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
 		int channels = grid.channels;
@@ -492,8 +510,30 @@ struct SplineGridPositionGradientFunctor<GPU, T> {
 		shared_size += (ndims)* THREADS * sizeof(float);
 		shared_size += (ndims)* THREADS * sizeof(float);
 		shared_size += (ndims)* THREADS * sizeof(float);
-		// Enqueue kernel
-		//spline_grid_position_gradient_kernel_gpu << <80, THREADS, shared_size >> > (N, ndims, n_neigh, channels, grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr, positions, coefficients, grad, result);
+
+
+		void *args[] = {
+			&N, 
+			&ndims, 
+			&n_neigh, 
+			&channels, 
+			&grid_dim_ptr, 
+			&strides_ptr, 
+			&K_ptr, 
+			&dx_ptr, 
+			&periodic_ptr, 
+			&positions, 
+			&coefficients, 
+			&grad, 
+			&result
+		};
+		cuLaunchKernel(kernel_position_gradient,
+			THREADS, 1, 1,
+			BLOCKS, 1, 1,
+			shared_size, NULL,
+			args,
+			0);
+		cudaDeviceSynchronize();
 
 		// Free resources
 		cudaFree(grid_dim_ptr);

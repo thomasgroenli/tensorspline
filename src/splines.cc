@@ -266,9 +266,9 @@ public:
 };
 
 
-//REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<CPU>);
-//REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_CPU), SplineGridCoefficientGradientOp<CPU>);
-//REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_CPU), SplineGridPositionGradientOp<CPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<CPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_CPU), SplineGridCoefficientGradientOp<CPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_CPU), SplineGridPositionGradientOp<CPU>);
 
 #ifdef USE_GPU
 REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<GPU>);
