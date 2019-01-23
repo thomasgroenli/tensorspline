@@ -14,6 +14,8 @@ library_file = os.path.join(dir_path, 'test.dll')
 
 spline_module = tf.load_op_library(library_file)
 
+spline_grid = spline_module.spline_grid
+
 try:
     @ops.RegisterGradient("SplineGrid")
     def _(op, grad):
