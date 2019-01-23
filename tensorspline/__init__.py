@@ -2,25 +2,17 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 import os
 
-
 from functools import reduce
 from operator import mul
 
 def prod(iterable):
     return reduce(mul, iterable)
 
-
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
+library_file = os.path.join(dir_path, 'test.dll')
 
-if os.name == 'nt':
-    spline_module = tf.load_op_library(os.path.join(dir_path,'lib/splines.dll'))
-else:
-    spline_module = tf.load_op_library(os.path.join(dir_path,'lib/splines.so'))
-
-
-
-spline_grid = spline_module.spline_grid
+spline_module = tf.load_op_library(library_file)
 
 try:
     @ops.RegisterGradient("SplineGrid")
@@ -44,7 +36,7 @@ class SplineInterpolator:
         self.extents = extents
 
     def __call__(self, x):
-        return spline_grid(x,self.C,order=self.order,periodic=self.periodic)
+        return spline_module.spline_grid(x,self.C,order=self.order,periodic=self.periodic)
 
     @property
     def dx(self):

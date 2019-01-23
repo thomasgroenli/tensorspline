@@ -275,3 +275,21 @@ REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<GPU>
 REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_GPU), SplineGridCoefficientGradientOp<GPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_GPU), SplineGridPositionGradientOp<GPU>);
 #endif
+
+
+/*#include <Python.h>
+
+
+static struct PyModuleDef tensorsplinemodule = {
+	PyModuleDef_HEAD_INIT,
+	"tensorsplinelibrary", 
+	NULL,
+	-1,
+	//(PyMethodDef []) { {NULL, NULL, 0, NULL} }
+};
+
+PyMODINIT_FUNC
+PyInit_tensorsplinelibrary(void)
+{
+	return PyModule_Create(&tensorsplinemodule);
+}*/
