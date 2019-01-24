@@ -10,7 +10,7 @@ def prod(iterable):
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-library_file = os.path.join(dir_path, 'test.dll')
+library_file = os.path.join(dir_path, 'library.dll')
 
 spline_module = tf.load_op_library(library_file)
 
