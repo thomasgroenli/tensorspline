@@ -1,16 +1,17 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
-import os
-
 from functools import reduce
 from operator import mul
+import os
+from distutils.sysconfig import get_config_var
 
 def prod(iterable):
     return reduce(mul, iterable)
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-
-library_file = os.path.join(dir_path, 'library.dll')
+ext_suffix = get_config_var('EXT_SUFFIX')
+name = [f for f in os.listdir(dir_path) if f.endswith(ext_suffix)][0]
+library_file = os.path.join(dir_path, name)
 
 spline_module = tf.load_op_library(library_file)
 
