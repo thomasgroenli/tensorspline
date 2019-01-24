@@ -34,7 +34,7 @@ class custom_build_clib(build_clib.build_clib):
                         self.compiler.compile(build_info.get('sources'),
                                             macros=build_info.get('macros'),
                                             include_dirs=build_info.get('include_dirs')),
-                       'tensorspline/test.dll',
+                       'tensorspline/library.dll',
                         libraries=build_info.get('libraries'),
                         library_dirs=build_info.get('library_dirs'))
 
@@ -47,7 +47,7 @@ setup(name='TensorSpline',
       author='Thomas Grønli',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],
-      package_data={'tensorspline': ['./lib/test.'+suffix]},
+      package_data={'tensorspline': ['./library.'+suffix]},
       libraries = [libtensorspline],
       cmdclass={
         'build_clib': custom_build_clib,
