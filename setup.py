@@ -1,9 +1,9 @@
-﻿import setuptools
+﻿from distutils.core import setup
 import os
 
 import pathlib
-from setuptools import Extension
-from setuptools.command.build_ext import build_ext
+from distutils.extension import Extension
+from distutils.command.build_ext import build_ext
 import platform
 
 system = platform.system()
@@ -82,12 +82,13 @@ class custom_build_ext(build_ext):
       def get_export_symbols(self,ext):
             return ext.export_symbols
 
-setuptools.setup(name='TensorSpline',
+setup(name='TensorSpline',
       version='1.0',
       description='Tensorflow operation for nD spline interpolation',
       author='Thomas Grønli',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],
+      ext_modules=[Extension('tensorspline.tensorspline_library',[])],
       install_requires = ['tensorflow-gpu==1.10'],
       cmdclass = {'build_ext': custom_build_ext}
      )
