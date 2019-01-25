@@ -1,22 +1,16 @@
-﻿from distutils.core import setup
+﻿import distutils.core as core
+import distutils.extension as extension
+import distutils.command.build_ext as build_ext
 import os
 
 import pathlib
-from distutils.extension import Extension
-from distutils.command.build_ext import build_ext
 import platform
 
 system = platform.system()
 
 default_cuda_path = "/usr/local/cuda"
 
-
-if system == 'Windows':
-      has_cuda = 'CUDA_PATH' in os.environ
-
-elif system == 'Linux':
-      #      has_cuda = 'CUDA_ROOT' in os.environ
-      has_cuda = os.path.isdir(default_cuda_path)
+has_cuda = os.path.isdir(default_cuda_path) or 'CUDA_PATH' in os.environ
 
 
 tf_req = 'tensorflow-gpu==1.10' if has_cuda else 'tensorflow==1.10'
@@ -25,10 +19,8 @@ def create_extension(distribution):
 
       distribution.fetch_build_eggs([tf_req])
       import tensorflow as tf
-
+    
       if system == 'Windows':
-            has_cuda = 'CUDA_PATH' in os.environ
-      
             include_dirs = [str(tf.sysconfig.get_include())]
             library_dirs = [str(pathlib.Path(tf.sysconfig.get_lib()) / 'python')]
             libraries = ['pywrap_tensorflow_internal']
@@ -49,11 +41,7 @@ def create_extension(distribution):
                   libraries.extend(['cuda','cudart','nvrtc'])
                   sources.append('tensorspline/src/splinegrid_gpu.cc')
 
-      elif system == 'Linux':
-            default_cuda_path = "/usr/local/cuda"
-            #      has_cuda = 'CUDA_ROOT' in os.environ
-            has_cuda = os.path.isdir(default_cuda_path)
-      
+      elif system == 'Linux':    
             include_dirs = [str(tf.sysconfig.get_include())]
             library_dirs = [str(pathlib.Path(tf.sysconfig.get_lib()))]
             libraries = ['tensorflow_framework']
@@ -73,11 +61,11 @@ def create_extension(distribution):
                   libraries.extend(['cuda','cudart','nvrtc'])
                   sources.append('tensorspline/src/splinegrid_gpu.cc')
 
-            else:
-                  raise Exception("Unknown target platform")
+      else:
+            raise Exception("Unknown target platform")
       
 
-            return Extension('tensorspline.tensorspline_library',
+      ext = extension.Extension('tensorspline.tensorspline_library',
                                      define_macros = macros,
                                      include_dirs = include_dirs,
                                      libraries = libraries,
@@ -85,22 +73,27 @@ def create_extension(distribution):
                                      sources = sources,
                                      extra_compile_args = extra_compile_args
             )
+      ext._needs_stub = False
+      return ext
 
-class custom_build_ext(build_ext):
+class custom_build_ext(build_ext.build_ext):
       def run(self):
             self.extensions = [create_extension(self.distribution)]
             super().run()
             
       def get_export_symbols(self,ext):
             return ext.export_symbols
+            
 
-setup(name='TensorSpline',
+tensorspline_empty = extension.Extension('tensorspline.tensorspline_library',sources=[])
+
+core.setup(name='TensorSpline',
       version='1.0',
       description='Tensorflow operation for nD spline interpolation',
       author='Thomas Grønli',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],
-      ext_modules=[Extension('tensorspline.tensorspline_library',[])],
+      ext_modules=[tensorspline_empty],
       install_requires = [tf_req],
       cmdclass = {'build_ext': custom_build_ext}
      )
