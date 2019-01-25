@@ -10,7 +10,6 @@ import platform
 
 system = platform.system()
 
-
 if system == 'Windows':
       has_cuda = 'CUDA_PATH' in os.environ
       
@@ -25,6 +24,8 @@ if system == 'Windows':
       
       sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc']
 
+      extra_compile_args = []
+      
       if has_cuda:
             macros.append(("USE_GPU",None))
             include_dirs.append(str(pathlib.Path(os.environ['CUDA_PATH']) / 'include'))
@@ -46,6 +47,9 @@ elif system == 'Linux':
       ]
       
       sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc']
+
+      extra_compile_args = ['-std=c++11']
+      
       if has_cuda:
             macros.append(("USE_GPU",None))
             include_dirs.append(str(pathlib.Path(default_cuda_path) / 'include'))
@@ -63,7 +67,7 @@ tensorspline = Extension('tensorspline.tensorspline_library',
                     libraries = libraries,
                     library_dirs = library_dirs,
                     sources = sources,
-                    extra_compile_args=['-std=c++11']
+                    extra_compile_args = extra_compile_args
                     )
 
 class custom_build_ext(build_ext):
