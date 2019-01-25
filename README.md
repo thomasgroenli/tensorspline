@@ -8,12 +8,17 @@ To contribute to this project, talk to Thomas Grønli (thomas.gronli@gmail.com)
 
 ## Usage
 ### Installation
-Install the precompiled wheel found under the "Downloads"-section
+Ensure you have installed the requirements 
+
+- ``tensorflow[-gpu]==1.10``
+
+- ``CUDA`` (optional)
+
+Install tensorspline with pip from the command line
 ```console
-$ pip install <TensorSpline>.whl
+$ pip install git+https://bitbucket.org/ntnuultrasoundgroup/tensorspline.git -v
 ```
 
-OR build from source.
 
 ### Reference
 The available function has the following signature  
