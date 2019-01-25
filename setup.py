@@ -8,10 +8,22 @@ import platform
 
 system = platform.system()
 
+default_cuda_path = "/usr/local/cuda"
 
+
+if system == 'Windows':
+      has_cuda = 'CUDA_PATH' in os.environ
+
+elif system == 'Linux':
+      #      has_cuda = 'CUDA_ROOT' in os.environ
+      has_cuda = os.path.isdir(default_cuda_path)
+
+
+tf_req = 'tensorflow-gpu==1.10' if has_cuda else 'tensorflow==1.10'
+      
 def create_extension(distribution):
 
-      distribution.fetch_build_eggs(['tensorflow-gpu==1.10'])
+      distribution.fetch_build_eggs([tf_req])
       import tensorflow as tf
 
       if system == 'Windows':
@@ -89,6 +101,6 @@ setup(name='TensorSpline',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],
       ext_modules=[Extension('tensorspline.tensorspline_library',[])],
-      install_requires = ['tensorflow-gpu==1.10'],
+      install_requires = [tf_req],
       cmdclass = {'build_ext': custom_build_ext}
      )
