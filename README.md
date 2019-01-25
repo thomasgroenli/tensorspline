@@ -8,13 +8,8 @@ To contribute to this project, talk to Thomas Grønli (thomas.gronli@gmail.com)
 
 ## Usage
 ### Installation
-Ensure you have installed the requirements 
+Install from the command line  
 
-- ``tensorflow[-gpu]==1.10``
-
-- ``CUDA`` (optional)
-
-Install tensorspline with pip from the command line
 ```console
 $ pip install git+https://bitbucket.org/ntnuultrasoundgroup/tensorspline.git -v
 ```
