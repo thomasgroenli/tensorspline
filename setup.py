@@ -1,6 +1,6 @@
-﻿import distutils.core as core
-import distutils.extension as extension
-import distutils.command.build_ext as build_ext
+﻿import setuptools as core
+import setuptools.extension as extension
+import setuptools.command.build_ext as build_ext
 import os
 
 import pathlib
@@ -12,8 +12,9 @@ default_cuda_path = "/usr/local/cuda"
 
 has_cuda = os.path.isdir(default_cuda_path) or 'CUDA_PATH' in os.environ
 
-
-tf_req = 'tensorflow-gpu==1.10' if has_cuda else 'tensorflow==1.10'
+version = '1.10'
+GPU_flag = {True: '-gpu', False: ''}
+tf_req = 'tensorflow{0}=={1}'.format(GPU_flag[has_cuda], version)
       
 def create_extension(distribution):
 
