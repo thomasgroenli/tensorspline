@@ -86,15 +86,13 @@ class custom_build_ext(build_ext.build_ext):
             return ext.export_symbols
             
 
-tensorspline_empty = extension.Extension('tensorspline.tensorspline_library',sources=[])
-
 core.setup(name='TensorSpline',
       version='1.0',
       description='Tensorflow operation for nD spline interpolation',
       author='Thomas Grønli',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],
-      ext_modules=[tensorspline_empty],
+      ext_modules=[extension.Extension('tensorspline.tensorspline_library',sources=[])],
       install_requires = [tf_req],
       cmdclass = {'build_ext': custom_build_ext}
      )

@@ -69,7 +69,10 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 			out[i*channels + j] = valid ? channel_sum[j] : fill_value;
 		}
 	}
-	delete[] idx, shift, channel_sum, kernel_tmp;
+	delete[] idx;
+	delete[] shift;
+	delete[] channel_sum;
+	delete[] kernel_tmp;
 }
 
 template<typename T>
@@ -147,7 +150,9 @@ void spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, 
 			}
 		}
 	}
-	delete[] idx, shift, kernel_tmp;
+	delete[] idx;
+	delete[] shift;
+	delete[] kernel_tmp;
 }
 
 template<typename T>
@@ -242,7 +247,12 @@ void spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int
 			result[i*ndims + j] = valid?directional_diff[j]:0;
 		}
 	}
-	delete[] idx, shift, kernel_tmp, Wijs, dWijs, directional_diff;
+	delete[] idx;
+	delete[] shift;
+	delete[] kernel_tmp;
+	delete[] Wijs;
+	delete[] dWijs;
+	delete[] directional_diff;
 }
 
 template<typename T>
