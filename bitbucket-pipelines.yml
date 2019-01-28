@@ -2,6 +2,6 @@ pipelines:
   default:
     - step:
         name: Build
-        image: python:latest
+        image: python:3.6
         script:
           - python setup.py build
