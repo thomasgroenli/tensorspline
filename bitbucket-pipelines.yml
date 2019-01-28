@@ -1,12 +1,7 @@
 pipelines:
   default:
     - step:
-        name: Linux build
-        image: python:3.6
-        script:
-          - pip install .
-    - step:
-        name: Windows build
-        image: python:3.6-windowsservercore
+        name: Build
+        image: python:latest
         script:
           - pip install .
