@@ -1,13 +1,13 @@
 pipelines:
   default:
     - step:
-        image: latest
+        image: python:latest
         caches:
           - pip
         script:
           - pip install .
     - step:
-        image: windowsservercore
+        image: python:windowsservercore
         caches:
           - pip
         script:
