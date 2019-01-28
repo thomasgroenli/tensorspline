@@ -1,14 +1,12 @@
 pipelines:
   default:
     - step:
+        name: Linux build
         image: python:latest
-        caches:
-          - pip
         script:
           - pip install .
     - step:
+        name: Windows build
         image: python:windowsservercore
-        caches:
-          - pip
         script:
           - pip install .
