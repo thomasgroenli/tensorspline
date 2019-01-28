@@ -4,4 +4,4 @@ pipelines:
         name: Build
         image: python:latest
         script:
-          - pip install .
+          - python setup.py build
