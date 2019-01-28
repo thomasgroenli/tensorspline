@@ -69,9 +69,9 @@ public:
 		auto interpolation_flat = interpolation->flat<float>();
 
 		// COMPUTE
-		int NDIMS = positions.dim_size(positions.dims() - 1);
-		int NCHAN = coefficients.dim_size(coefficients.dims() - 1);
-		int N = positions_flat.size() / NDIMS;
+		unsigned int NDIMS = positions.dim_size(positions.dims() - 1);
+		unsigned int NCHAN = coefficients.dim_size(coefficients.dims() - 1);
+		unsigned int N = positions_flat.size() / NDIMS;
 		while (K.size() < NDIMS) {
 			K.push_back(DEFAULT_ORDER);
 		}
@@ -137,9 +137,9 @@ public:
 		auto grad_flat = grad.flat<float>();
 
 
-		int NDIMS = positions.dim_size(positions.dims() - 1);
-		int NCHAN = shape.dim_size(shape.dims() - 1);
-		int N = positions_flat.size() / NDIMS;
+		unsigned int NDIMS = positions.dim_size(positions.dims() - 1);
+		unsigned int NCHAN = shape.dim_size(shape.dims() - 1);
+		unsigned int N = positions_flat.size() / NDIMS;
 		while (K.size() < NDIMS) {
 			K.push_back(DEFAULT_ORDER);
 		}
@@ -217,9 +217,9 @@ public:
 		auto shape = coefficients.shape();
 
 
-		int NDIMS = positions.dim_size(positions.dims() - 1);
-		int NCHAN = shape.dim_size(shape.dims() - 1);
-		int N = positions_flat.size() / NDIMS;
+		unsigned int NDIMS = positions.dim_size(positions.dims() - 1);
+		unsigned int NCHAN = shape.dim_size(shape.dims() - 1);
+		unsigned int N = positions_flat.size() / NDIMS;
 		while (K.size() < NDIMS) {
 			K.push_back(DEFAULT_ORDER);
 		}
@@ -276,20 +276,3 @@ REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_GPU)
 REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_GPU), SplineGridPositionGradientOp<GPU>);
 #endif
 
-
-/*#include <Python.h>
-
-
-static struct PyModuleDef tensorsplinemodule = {
-	PyModuleDef_HEAD_INIT,
-	"tensorsplinelibrary", 
-	NULL,
-	-1,
-	//(PyMethodDef []) { {NULL, NULL, 0, NULL} }
-};
-
-PyMODINIT_FUNC
-PyInit_tensorsplinelibrary(void)
-{
-	return PyModule_Create(&tensorsplinemodule);
-}*/
