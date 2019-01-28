@@ -83,7 +83,7 @@ public:
 		}
 
 		Grid grid;
-		for (int i = 0; i < NDIMS; i++) {
+		for (unsigned int i = 0; i < NDIMS; i++) {
 			grid.K.push_back(K[i]);
 			grid.dims.push_back(coefficients.dim_size(i));
 			grid.dx.push_back(dx[i]);
@@ -152,7 +152,7 @@ public:
 
 
 		Grid grid;
-		for (int i = 0; i < NDIMS; i++) {
+		for (unsigned int i = 0; i < NDIMS; i++) {
 			grid.K.push_back(K[i]);
 			grid.dims.push_back(shape.dim_size(i));
 			grid.dx.push_back(dx[i]);
@@ -232,7 +232,7 @@ public:
 
 
 		Grid grid;
-		for (int i = 0; i < NDIMS; i++) {
+		for (unsigned int i = 0; i < NDIMS; i++) {
 			grid.K.push_back(K[i]);
 			grid.dims.push_back(shape.dim_size(i));
 			grid.dx.push_back(dx[i]);
