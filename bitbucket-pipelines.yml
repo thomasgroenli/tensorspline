@@ -5,3 +5,8 @@ pipelines:
         image: python:3.6
         script:
           - pip install .
+    - step:
+        name: Windows build
+        image: python:3.6-windowsservercore
+        script:
+          - pip install .
