@@ -8,10 +8,11 @@ To contribute to this project, talk to Thomas Grønli (thomas.gronli@gmail.com)
 
 ## Usage
 ### Installation
-Install from the command line  
+
+Install from the command line with a C/C++ compiler suite installed
 
 ```console
-$ pip install git+https://bitbucket.org/ntnuultrasoundgroup/tensorspline.git -v
+$ pip install git+https://bitbucket.org/ntnuultrasoundgroup/tensorspline.git
 ```
 
 
