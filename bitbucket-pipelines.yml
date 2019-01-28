@@ -3,7 +3,5 @@ pipelines:
     - step:
         name: Build
         image: python:3.6
-        caches:
-          - pip
         script:
           - python setup.py build
