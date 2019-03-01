@@ -1,7 +1,0 @@
-pipelines:
-  default:
-    - step:
-        name: Build
-        image: python:3.6
-        script:
-          - python setup.py build
