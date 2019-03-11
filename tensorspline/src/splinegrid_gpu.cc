@@ -1,12 +1,12 @@
+#define EIGEN_USE_GPU
+
 #include "splines.h"
 #include <cuda.h>
 #include <nvrtc.h>
 #include <cuda_runtime.h>
 #define THREADS 256
-#define BLOCKS 128
+#define BLOCKS 1024
 #include <iostream>
-#include <sstream>
-#include <fstream>
 
 
 const char *kernels = R"(
@@ -289,6 +289,7 @@ void compile() {
 	if (compiled) {
 		return;
 	}
+	cuInit(0);
 	nvrtcProgram prog;
 	nvrtcCreateProgram(&prog,
 		kernels,
@@ -307,12 +308,12 @@ void compile() {
 	char *log = new char[logSize];
 	nvrtcGetProgramLog(prog, log);
 	
+	//std::cout << log << std::endl;
+
 	size_t ptxSize;
 	nvrtcGetPTXSize(prog, &ptxSize);
 	char *ptx = new char[ptxSize];
 	nvrtcGetPTX(prog, ptx);
-
-	std::cout << log << std::endl;
 
 	nvrtcDestroyProgram(&prog);
 
@@ -378,12 +379,11 @@ struct SplineGridFunctor<GPU, T> {
 			&coefficients, 
 			&out };
 		cuLaunchKernel(kernel,
-			THREADS, 1, 1,
 			BLOCKS, 1, 1,
+			THREADS, 1, 1,
 			shared_size, NULL,
 			args,
 			0);
-		cudaDeviceSynchronize();
 
 		// Free resources
 		cudaFree(grid_dim_ptr);
@@ -451,12 +451,11 @@ struct SplineGridCoefficientGradientFunctor<GPU, T> {
 			&values
 		};
 		cuLaunchKernel(kernel_coefficient_gradient,
-			THREADS, 1, 1,
 			BLOCKS, 1, 1,
+			THREADS, 1, 1,
 			shared_size, NULL,
 			args,
 			0);
-		cudaDeviceSynchronize();
 
 		// Free resources
 		cudaFree(grid_dim_ptr);
@@ -528,12 +527,11 @@ struct SplineGridPositionGradientFunctor<GPU, T> {
 			&result
 		};
 		cuLaunchKernel(kernel_position_gradient,
-			THREADS, 1, 1,
 			BLOCKS, 1, 1,
+			THREADS, 1, 1,
 			shared_size, NULL,
 			args,
 			0);
-		cudaDeviceSynchronize();
 
 		// Free resources
 		cudaFree(grid_dim_ptr);

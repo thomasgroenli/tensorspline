@@ -54,7 +54,6 @@ public:
 		const Tensor &positions = context->input(0);
 		const Tensor &coefficients = context->input(1);
 
-
 		TensorShape shape = positions.shape();
 		shape.set_dim(shape.dims() - 1, coefficients.dim_size(coefficients.dims() - 1));
 

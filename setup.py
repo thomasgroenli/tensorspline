@@ -15,7 +15,7 @@ has_cuda = os.path.isdir(default_cuda_path) or 'CUDA_PATH' in os.environ
 version = '1.10'
 GPU_flag = {True: '-gpu', False: ''}
 tf_req = 'tensorflow{0}=={1}'.format(GPU_flag[has_cuda], version)
-      
+
 def create_extension(distribution):
 
       distribution.fetch_build_eggs([tf_req])
