@@ -10,7 +10,6 @@
 
 
 const char *kernels = R"(
-
 //GPU specialization of actual computation.
 __device__
 float kernel_gpu(float x, int p, int dx, float *tmp) {
@@ -32,7 +31,7 @@ float kernel_gpu(float x, int p, int dx, float *tmp) {
 }
 
 extern "C" {
-__global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const int *periodic_ptr, const float *positions, const float *coefficients, float *out) {
+__global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const int *periodic_ptr, const float *positions, const float *coefficients, float *out, int local_accumulator) {
 
 	extern __shared__ int shared_info[];
 	int *grid_dim = shared_info;
@@ -59,7 +58,7 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 	int *idx = periodic + ndims + threadIdx.x;
 	float *shift = (float*)(idx + ndims * blockDim.x);
 	float *channel_sum = shift + ndims * blockDim.x;
-	float *kernel_tmp = channel_sum + channels * blockDim.x;
+	float *kernel_tmp = channel_sum + channels * local_accumulator * blockDim.x;
 
 	// grid-stride loop
 	for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
@@ -79,7 +78,7 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 
 		// Reset channel sums
 		for (int j = 0; j < channels; j++) {
-			channel_sum[blockDim.x*j] = 0;
+			if (local_accumulator) channel_sum[blockDim.x*j] = 0;
 		}
 
 		// Reduction loop over neighboring nodes
@@ -102,12 +101,12 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 			}
 			// Accumulate contribution in each channel
 			for (int k = 0; k < channels; k++) {
-				channel_sum[blockDim.x*k] += Wij * (valid ? coefficients[channels*flat + k] : 0);
+				(local_accumulator ? channel_sum[blockDim.x*k] : out[i*channels + k]) += Wij * (valid ? coefficients[channels*flat + k] : 0);
 			}
 		}
 		// Write channel sum to global memory
 		for (int j = 0; j < channels; j++) {
-			out[i*channels + j] = valid ? channel_sum[blockDim.x*j] : fill_value;
+			out[i*channels + j] = valid ? local_accumulator ? channel_sum[blockDim.x*j] : out[i*channels + j] : fill_value;
 		}
 	}
 }
@@ -308,7 +307,7 @@ void compile() {
 	char *log = new char[logSize];
 	nvrtcGetProgramLog(prog, log);
 	
-	//std::cout << log << std::endl;
+	std::cout << log << std::endl;
 
 	size_t ptxSize;
 	nvrtcGetPTXSize(prog, &ptxSize);
@@ -331,10 +330,13 @@ template<typename T>
 struct SplineGridFunctor<GPU, T> {
 	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, float *out) {
 		compile();
-		
+
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
 		int channels = grid.channels;
+
+		int local_accumulator = channels <= 8;
+
 		int max_order = grid.maxorder();
 		float fill_value = grid.fill_value;
 		std::vector<int> strides = grid.strides();
@@ -357,11 +359,13 @@ struct SplineGridFunctor<GPU, T> {
 		cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
 		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
 
+		std::cout << "Local accumulator: " << local_accumulator << std::endl;
+
 		// Compute shared memory size
 		int shared_size = 5 * ndims * sizeof(int);
 		shared_size += ndims * THREADS * sizeof(int);
 		shared_size += ndims * THREADS * sizeof(float);
-		shared_size += channels * THREADS * sizeof(float);
+		shared_size += local_accumulator * channels * THREADS * sizeof(float);
 		shared_size += (max_order + 1) * THREADS * sizeof(float);
 		
 		void *args[] = { 
@@ -377,7 +381,8 @@ struct SplineGridFunctor<GPU, T> {
 			&periodic_ptr, 
 			&positions, 
 			&coefficients, 
-			&out };
+			&out,
+			&local_accumulator};
 		cuLaunchKernel(kernel,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
