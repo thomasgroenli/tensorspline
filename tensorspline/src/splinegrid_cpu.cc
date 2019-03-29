@@ -91,7 +91,7 @@ struct SplineGridFunctor<CPU, T> {
 
 #ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
-		Shard(pool->NumThreads(), pool, N, 128, [&](int start, int end) {
+		Shard(pool->NumThreads(), pool, N, 1024, [&](int start, int end) {
 			spline_grid_kernel_cpu(start, end, ndims, n_neigh, channels, fill_value, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, coefficients, out);
 		});
 #else
@@ -170,7 +170,7 @@ struct SplineGridCoefficientGradientFunctor<CPU, T> {
 
 #ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
-		Shard(pool->NumThreads(), pool, N, 256, [&](int start, int end) {
+		Shard(pool->NumThreads(), pool, N, 1024, [&](int start, int end) {
 			spline_grid_coefficient_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, grad, indices, values);
 		});
 #else
@@ -270,7 +270,7 @@ struct SplineGridPositionGradientFunctor<CPU, T> {
 
 #ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
-		Shard(pool->NumThreads(), pool, N, 256, [&](int start, int end) {
+		Shard(pool->NumThreads(), pool, N, 1024, [&](int start, int end) {
 			spline_grid_position_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, coefficients, grad, result);
 		});
 #else
