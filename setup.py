@@ -28,7 +28,7 @@ def create_extension(distribution):
       
             macros = [("NOMINMAX",None),
                       ("COMPILER_MSVC",None),
-                      ("USE_MULTITHREADING",None)
+                      ("USE_MULTITHREAD",None)
             ]
       
             sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc']
@@ -48,7 +48,7 @@ def create_extension(distribution):
             libraries = ['tensorflow_framework']
 
             macros = [("_GLIBCXX_USE_CXX11_ABI", "0"),
-                      #("USE_MULTITHREADING",None) Multithreading in tensorflow broken on gcc>=5
+                      #("USE_MULTITHREAD",None) Multithreading in tensorflow broken on gcc>=5
             ]
       
             sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc']
