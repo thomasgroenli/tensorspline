@@ -359,8 +359,6 @@ struct SplineGridFunctor<GPU, T> {
 		cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
 		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
 
-		std::cout << "Local accumulator: " << local_accumulator << std::endl;
-
 		// Compute shared memory size
 		int shared_size = 5 * ndims * sizeof(int);
 		shared_size += ndims * THREADS * sizeof(int);
