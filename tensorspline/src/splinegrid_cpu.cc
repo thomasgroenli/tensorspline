@@ -22,7 +22,6 @@ float kernel_cpu(float x, int p, int dx, float *tmp) {
 void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *coefficients, float *out) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
-	float *channel_sum = new float[channels];
 	int max_order = 0;
 	for (int i = 0; i < ndims; i++) {
 		max_order = K[i] > max_order ? K[i] : max_order;
@@ -42,7 +41,7 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 			idx[j] = tmp;
 		}
 		for (int j = 0; j < channels; j++) {
-			channel_sum[j] = 0;
+			out[i*channels + j] = valid ? 0 : fill_value;
 		}
 
 		for (int j = 0; j < n_neigh; j++) {
@@ -62,16 +61,12 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
-				channel_sum[k] += Wij * (valid ? coefficients[channels*flat + k] : 0);
+				out[i*channels + k] += Wij * coefficients[channels*flat + k];
 			}
-		}
-		for (int j = 0; j < channels; j++) {
-			out[i*channels + j] = valid ? channel_sum[j] : fill_value;
 		}
 	}
 	delete[] idx;
 	delete[] shift;
-	delete[] channel_sum;
 	delete[] kernel_tmp;
 }
 
