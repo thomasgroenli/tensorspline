@@ -11,20 +11,32 @@ system = platform.system()
 default_cuda_path = "/usr/local/cuda"
 
 has_cuda = os.path.isdir(default_cuda_path) or 'CUDA_PATH' in os.environ
-
-version = '1.10'
+has_cuda = False
 GPU_flag = {True: '-gpu', False: ''}
-tf_req = 'tensorflow{0}=={1}'.format(GPU_flag[has_cuda], version)
+tf_req = 'tensorflow{0}'.format(GPU_flag[has_cuda])
 
 def create_extension(distribution):
 
-      distribution.fetch_build_eggs([tf_req])
       import tensorflow as tf
     
       if system == 'Windows':
-            include_dirs = [str(tf.sysconfig.get_include())]
-            library_dirs = [str(pathlib.Path(tf.sysconfig.get_lib()) / 'python')]
-            libraries = ['pywrap_tensorflow_internal']
+            inc_path = pathlib.Path(tf.sysconfig.get_include())
+            
+            import distutils
+
+            distutils.dir_util.copy_tree(inc_path, 'build/include')
+            try:
+                  os.rename('build/include/tensorflow_core/', 'build/include/tensorflow')
+            except:
+                  pass
+            include_dirs = ["build/include"]
+
+            distutils.file_util.copy_file(
+                  pathlib.Path(tf.sysconfig.get_lib()) / 'python' / '_pywrap_tensorflow_internal.lib',
+                  'build/tensorflow.lib'
+            )
+            library_dirs = ['build']
+            libraries = ['tensorflow']
       
             macros = [("NOMINMAX",None),
                       ("COMPILER_MSVC",None),
@@ -93,6 +105,6 @@ core.setup(name='TensorSpline',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],
       ext_modules=[extension.Extension('tensorspline.tensorspline_library',sources=[])],
-      install_requires = [tf_req],
+      #install_requires = [tf_req],
       cmdclass = {'build_ext': custom_build_ext}
      )
