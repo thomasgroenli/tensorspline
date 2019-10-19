@@ -55,9 +55,23 @@ def create_extension(distribution):
                   sources.append('tensorspline/src/splinegrid_gpu.cc')
 
       elif system == 'Linux':    
-            include_dirs = [str(tf.sysconfig.get_include())]
-            library_dirs = [str(pathlib.Path(tf.sysconfig.get_lib()))]
-            libraries = ['tensorflow_framework']
+            inc_path = pathlib.Path(tf.sysconfig.get_include())
+
+            import distutils
+
+            distutils.dir_util.copy_tree(inc_path, 'build/include')
+            try:
+                  os.rename('build/include/tensorflow_core/', 'build/include/tensorflow')
+            except:
+                  pass
+            include_dirs = ["build/include"]
+
+            distutils.file_util.copy_file(
+                  pathlib.Path(tf.sysconfig.get_lib()) / 'python' / '_pywrap_tensorflow_internal.so',
+                  'build/libtensorflow.so'
+            )
+            library_dirs = ['build']
+            libraries = ['tensorflow']
 
             macros = [("_GLIBCXX_USE_CXX11_ABI", "0"),
                       #("USE_MULTITHREAD",None) Multithreading in tensorflow broken on gcc>=5
