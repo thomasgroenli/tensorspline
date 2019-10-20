@@ -33,8 +33,6 @@ except KeyError:
     pass
 
 
-
-
 def generate_1d_kernel(p,dx):
     positions = 0.5*np.ones([1,1],dtype=np.float32)
     gradients = np.ones([1,1],dtype=np.float32)
@@ -56,6 +54,25 @@ def bspline_convolve(C,ps,dxs):
         C_tmp = tf.transpose(tf.reshape(tf.nn.conv1d(tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1]),tf.tile(kernel[:,None,None],[1,1,shape[-1]]),1,'VALID'),new_shape),permutation)
     return C_tmp
 
+
+def generate_prefilter_kernel(p):
+    x = tf.range(-64,65,dtype=tf.float32)
+    y = spline_module.b_spline(x,p)
+    t = tf.signal.fft(tf.cast(y,np.complex128))
+    p = tf.pad(tf.cast(tf.signal.ifft(1/t),tf.float32),[[0,2]],mode='CONSTANT')
+    return p
+
+def bspline_prefilter(C,ps):
+    C_tmp = C
+    Ndim = len(ps)
+    permutation = np.append(np.roll(list(range(Ndim)),1),Ndim)
+
+    shape = tf.shape(C_tmp)
+    
+    for kernel in reversed([generate_prefilter_kernel(p) for p in ps]):    
+        C_tmp = tf.transpose(tf.reshape(tf.nn.convolution(tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1]),tf.tile(kernel[:,None,None],[1,1,shape[-1]]),1,'SAME'),shape),permutation)
+    
+    return C_tmp
 
 class SplineInterpolator:
     def __init__(self, C, order=[], periodic=[],extents=[]):

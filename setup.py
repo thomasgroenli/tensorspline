@@ -11,13 +11,13 @@ system = platform.system()
 default_cuda_path = "/usr/local/cuda"
 
 has_cuda = os.path.isdir(default_cuda_path) or 'CUDA_PATH' in os.environ
-has_cuda = False
+
 GPU_flag = {True: '-gpu', False: ''}
 tf_req = 'tensorflow{0}'.format(GPU_flag[has_cuda])
 
 def create_extension(distribution):
 
-      import tensorflow as tf
+      tf = __import__("tensorflow")
     
       if system == 'Windows':
             inc_path = pathlib.Path(tf.sysconfig.get_include())
@@ -112,13 +112,13 @@ class custom_build_ext(build_ext.build_ext):
             return ext.export_symbols
             
 
-core.setup(name='TensorSpline',
-      version='1.0',
+core.setup(name='tensorspline',
       description='Tensorflow operation for nD spline interpolation',
       author='Thomas Grønli',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],
       ext_modules=[extension.Extension('tensorspline.tensorspline_library',sources=[])],
-      #install_requires = [tf_req],
+      setup_requires = [tf_req],
+      install_requires = [tf_req],
       cmdclass = {'build_ext': custom_build_ext}
      )

@@ -1,4 +1,12 @@
 #include "splines.h"
+
+REGISTER_OP("BSpline")
+.Input("x: float32")
+.Attr("order: int = 1")
+.Attr("dx: int = 0")
+.Output("bsx: float32");
+
+
 REGISTER_OP("SplineGrid")
 .Input("positions: float32")
 .Input("coefficients: float32")
@@ -30,6 +38,48 @@ REGISTER_OP("SplineGridPositionGradient")
 .Attr("periodic: list(int) = []")
 .Attr("debug: bool = false")
 .Output("grad: float32");
+
+
+template<::DeviceType Device>
+class BSplineOp : public OpKernel {
+private:
+	int K;
+	int dx;
+public:
+	explicit BSplineOp(OpKernelConstruction* context) : OpKernel(context) {
+		context->GetAttr("order", &K);
+		context->GetAttr("dx", &dx);
+	}
+
+	void Compute(OpKernelContext* context) override {
+		const Tensor &x = context->input(0);
+
+		TensorShape shape = x.shape();
+
+
+		Tensor *bsx = NULL;
+		OP_REQUIRES_OK(context, context->allocate_output(0, shape,
+			&bsx));
+
+
+		auto x_flat = x.flat<float>();
+		auto bsx_flat = bsx->flat<float>();
+
+		int N = x_flat.size();
+
+		auto start = std::chrono::high_resolution_clock::now();
+		BSplineFunctor<Device>()(context,
+			N,
+			K,
+			dx,
+			x_flat.data(),
+			bsx_flat.data());
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - start;
+	}
+
+};
+
 
 
 
@@ -265,6 +315,7 @@ public:
 };
 
 
+REGISTER_KERNEL_BUILDER(Name("BSpline").Device(DEVICE_CPU), BSplineOp<CPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<CPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_CPU), SplineGridCoefficientGradientOp<CPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_CPU), SplineGridPositionGradientOp<CPU>);

@@ -6,7 +6,7 @@ float kernel_cpu(float x, int p, int dx, float *tmp) {
 		return 0;
 	}
 	x += (p + 1) / 2.;
-	int k = x;
+	int k = floor(x);
 	for (int i = 0; i < p + 1; i++) {
 		tmp[i] = k == i;
 	}
@@ -18,6 +18,31 @@ float kernel_cpu(float x, int p, int dx, float *tmp) {
 	}
 	return tmp[0];
 }
+
+
+void bspline_kernel_cpu(int start, int end, int order, int dx, const float *x, float *bsx) {
+	float *kernel_tmp = new float[order + 1];
+	for (int i = start; i < end; ++i) {
+		bsx[i] = kernel_cpu(x[i], order, dx, kernel_tmp);
+	}
+}
+
+template<typename T>
+struct BSplineFunctor<CPU, T> {
+	void operator()(OpKernelContext *context,  int N, int order, int dx, const float *x, float *bsx) {
+
+#ifdef USE_MULTITHREAD
+		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
+		Shard(pool->NumThreads(), pool, N, 1024, [&](int start, int end) {
+			bspline_kernel_cpu(start, end, order, dx, x, bsx);	
+		});
+#else
+		bspline_kernel_cpu(0, N, order, dx, x, bsx);
+#endif
+	}
+};
+
+template struct BSplineFunctor<CPU, float>;
 
 void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *coefficients, float *out) {
 	int *idx = new int[ndims];

@@ -85,6 +85,11 @@ struct Grid {
 enum DeviceType {CPU, GPU};
 
 template<::DeviceType Device, typename T = float>
+struct BSplineFunctor {
+	void operator()(OpKernelContext *, int, int, int, const float *, float *);
+};
+
+template<::DeviceType Device, typename T = float>
 struct SplineGridFunctor {
 	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, float *);
 };
