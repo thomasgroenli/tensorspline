@@ -69,8 +69,10 @@ def bspline_prefilter(C,ps):
 
     shape = tf.shape(C_tmp)
     
-    for kernel in reversed([generate_prefilter_kernel(p) for p in ps]):    
-        C_tmp = tf.transpose(tf.reshape(tf.nn.convolution(tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1]),tf.tile(kernel[:,None,None],[1,1,shape[-1]]),1,'SAME'),shape),permutation)
+    for kernel in reversed([generate_prefilter_kernel(p) for p in ps]):
+        shape = tf.shape(C_tmp)
+        new_shape = tf.concat([shape[:-2],[shape[-2]],[shape[-1]]],0)   
+        C_tmp = tf.transpose(tf.reshape(tf.nn.convolution(tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1]),tf.tile(kernel[:,None,None],[1,1,shape[-1]]),1,'SAME'),new_shape),permutation)
     
     return C_tmp
 
