@@ -33,28 +33,6 @@ except KeyError:
     pass
 
 
-def generate_1d_kernel(p,dx):
-    positions = 0.5*np.ones([1,1],dtype=np.float32)
-    gradients = np.ones([1,1],dtype=np.float32)
-    grid = spline_module.spline_grid_coefficient_gradient(coeff_shape=[2,1],
-                                                             positions=positions,
-                                                             gradients=gradients,
-                                                             order=[p],dx=[dx])
-    return grid[1]
-
-
-def bspline_convolve(C,ps,dxs):
-    C_tmp = C
-    Ndim = len(ps)
-    permutation = np.append(np.roll(list(range(Ndim)),1),Ndim)
-
-    for kernel, p in reversed([(generate_1d_kernel(p,dx),p) for p,dx in zip(ps,dxs)]):
-        shape = tf.shape(C_tmp)
-        new_shape = tf.concat([shape[:-2],[shape[-2]-p],[shape[-1]]],0)
-        C_tmp = tf.transpose(tf.reshape(tf.nn.conv1d(tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1]),tf.tile(kernel[:,None,None],[1,1,shape[-1]]),1,'VALID'),new_shape),permutation)
-    return C_tmp
-
-
 def generate_prefilter_kernel(p):
     x = tf.range(-64,65,dtype=tf.float32)
     y = spline_module.b_spline(x,p)
@@ -76,9 +54,28 @@ def bspline_prefilter(C,ps):
     
     return C_tmp
 
+def generate_1d_kernel(p,dx):
+    x = tf.cast(tf.range(-(p-1)//2-1,p//2+2),tf.float32)
+    return spline_module.b_spline(x,p,dx)
+
+def bspline_convolve(C,ps,dxs):
+    C_tmp = C
+    Ndim = len(ps)
+    permutation = np.append(np.roll(list(range(Ndim)),1),Ndim)
+
+    for kernel in reversed([generate_1d_kernel(p,dx) for p,dx in zip(ps,dxs)]):
+        shape = tf.shape(C_tmp)
+        new_shape = tf.concat([shape[:-2],[shape[-2]],[shape[-1]]],0)
+        C_tmp = tf.transpose(tf.reshape(tf.nn.conv1d(tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1]),tf.tile(kernel[:,None,None],[1,1,shape[-1]]),1,'SAME'),new_shape),permutation)
+    return C_tmp
+
+
 class SplineInterpolator:
-    def __init__(self, C, order=[], periodic=[],extents=[]):
-        self.C = C
+    def __init__(self, C, order=[], periodic=[],extents=[], prefilter=False):
+        if prefilter:
+            self.C = bspline_prefilter(C, order)
+        else:
+            self.C = C
         self.order = order
         self.periodic = periodic
         self.extents = extents
@@ -91,13 +88,13 @@ class SplineInterpolator:
     @property
     def dx(self):
         class D:
-            def __getitem__(subself,dx):
+            def __getitem__(_,dx):
                 def dummy(x):
                     if x is None:
                         res = bspline_convolve(self.C,self.order,dx)*tf.reduce_prod(tf.cast(tf.shape(self.C)[:-1],tf.float32)**dx)
                     else:
                         res = spline_module.spline_grid(x,self.C,order=self.order,periodic=self.periodic,dx=dx)
-                    return res/np.prod([self.extents[i]**dx[i] for i in range(len(dx))])
+                    return res/prod([self.extents[i]**dx[i] for i in range(len(dx))])
                 return dummy
         return D()
 
