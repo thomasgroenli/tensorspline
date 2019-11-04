@@ -42,11 +42,11 @@ def generate_prefilter_kernel(p):
 
 def bspline_prefilter(C,ps):
     C_tmp = C
+    
     Ndim = len(ps)
+
     permutation = np.append(np.roll(list(range(Ndim)),1),Ndim)
 
-    shape = tf.shape(C_tmp)
-    
     for kernel in reversed([generate_prefilter_kernel(p) for p in ps]):
         shape = tf.shape(C_tmp)
         new_shape = tf.concat([shape[:-2],[shape[-2]],[shape[-1]]],0)   
@@ -55,12 +55,14 @@ def bspline_prefilter(C,ps):
     return C_tmp
 
 def generate_1d_kernel(p,dx):
-    x = tf.cast(tf.range(-(p-1)//2-1,p//2+2),tf.float32)
+    x = tf.cast(tf.range(-(p-1)//2-1,p//2+2)[::-1],tf.float32)
     return spline_module.b_spline(x,p,dx)
 
 def bspline_convolve(C,ps,dxs):
     C_tmp = C
+
     Ndim = len(ps)
+
     permutation = np.append(np.roll(list(range(Ndim)),1),Ndim)
 
     for kernel in reversed([generate_1d_kernel(p,dx) for p,dx in zip(ps,dxs)]):
