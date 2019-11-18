@@ -72,8 +72,23 @@ def bspline_convolve(C,ps,dxs):
     return C_tmp
 
 
+def transform_axis(x, ks):
+    axes = []
+    for i, k in enumerate(ks):
+        xi = x[..., i]
+        if k is None:
+            res = xi
+        else:
+            k = tf.constant(k)
+            idx = tf.clip_by_value(tf.searchsorted(k,xi),1,len(k)-1)
+            a,b = tf.gather(k,idx-1), tf.gather(k,idx)
+            res = ((xi-a)/(b-a)+tf.cast(idx,x.dtype)-1)/(len(k)-1)
+
+        axes.append(res)
+    return tf.stack(axes,axis=-1)
+
 class SplineInterpolator:
-    def __init__(self, C, order=[], periodic=[],extents=[], prefilter=False):
+    def __init__(self, C, order=[], periodic=[], axes=[], prefilter=False):
         if prefilter:
             self.C = bspline_prefilter(C, order)
         else:

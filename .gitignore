@@ -2,3 +2,4 @@
 *.a
 *~
 build
+tensorspline/__pycache__

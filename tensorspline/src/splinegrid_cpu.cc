@@ -86,7 +86,7 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
-				out[i*channels + k] += Wij * coefficients[channels*flat + k];
+				if (valid) out[i*channels + k] += Wij * coefficients[channels*flat + k];
 			}
 		}
 	}
