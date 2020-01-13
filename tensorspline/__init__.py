@@ -95,7 +95,7 @@ class SplineInterpolator:
             self.C = C
         self.order = order
         self.periodic = periodic
-        self.extents = axes
+        self.extents = extents
 
     def __call__(self, x):
         if x is None:
