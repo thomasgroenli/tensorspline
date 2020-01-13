@@ -88,14 +88,14 @@ def transform_axis(x, ks):
     return tf.stack(axes,axis=-1)
 
 class SplineInterpolator:
-    def __init__(self, C, order=[], periodic=[], axes=[], prefilter=False):
+    def __init__(self, C, order=[], periodic=[], extents=[], prefilter=False):
         if prefilter:
             self.C = bspline_prefilter(C, order)
         else:
             self.C = C
         self.order = order
         self.periodic = periodic
-        self.extents = extents
+        self.extents = axes
 
     def __call__(self, x):
         if x is None:
