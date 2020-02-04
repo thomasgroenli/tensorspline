@@ -13,7 +13,7 @@ has_cuda = "CUDA_PATH" in os.environ
 
 
 GPU_flag = {True: '-gpu', False: ''}
-tf_req = 'tensorflow{0}'.format(GPU_flag[has_cuda])
+tf_req = 'tensorflow{0}==2.0'.format(GPU_flag[has_cuda])
 
 def create_extension(distribution):
 
@@ -43,7 +43,7 @@ def create_extension(distribution):
                       ("USE_MULTITHREAD",None)
             ]
       
-            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc']
+            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = []
       
@@ -77,7 +77,7 @@ def create_extension(distribution):
                       ("USE_MULTITHREAD",None)
             ]
       
-            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc']
+            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = ['-std=c++11']
       

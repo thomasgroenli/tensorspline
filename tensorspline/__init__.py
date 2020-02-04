@@ -20,6 +20,7 @@ library_file = os.path.join(dir_path, name)
 spline_module = tf.load_op_library(library_file)
 
 spline_grid = spline_module.spline_grid
+spline_mapping = spline_module.spline_mapping
 
 try:
     @ops.RegisterGradient("SplineGrid")
@@ -32,6 +33,9 @@ try:
 except KeyError:
     pass
 
+
+def grid(dims):
+    return tf.stack(tf.meshgrid(*[tf.linspace(0.,1.,x) for x in dims],indexing='ij'),axis=-1)
 
 def generate_prefilter_kernel(p):
     x = tf.range(-64,65,dtype=tf.float32)
