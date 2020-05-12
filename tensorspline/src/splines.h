@@ -27,6 +27,13 @@ struct Grid {
 	int ndims() const {
 		return K.size();
 	}
+	int num_points() const {
+		int product = 1;
+		for(int i=0; i<ndims(); i++) {
+			product *= dims[i];
+		}
+		return product;
+	}
 	std::vector<int> strides() const {
 		std::vector<int> result(ndims(), 1);
 		for (int i = ndims() - 2; i >= 0; i--) {
@@ -84,6 +91,7 @@ struct Grid {
 
 enum DeviceType {CPU, GPU};
 
+float kernel_cpu(float x, int p, int dx, float *tmp);
 
 template<::DeviceType Device, typename T = float>
 struct BSplineFunctor {
@@ -102,5 +110,10 @@ struct SplineGridCoefficientGradientFunctor {
 
 template<::DeviceType Device, typename T = float>
 struct SplineGridPositionGradientFunctor {
+	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
+};
+
+template<::DeviceType Device, typename T = float>
+struct SplineMappingFunctor {
 	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
 };

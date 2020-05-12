@@ -17,6 +17,18 @@ REGISTER_OP("SplineGrid")
 .Attr("debug: bool = false")
 .Output("interpolation: float32");
 
+REGISTER_OP("SplineMapping")
+.Input("positions: float32")
+.Input("values: float32")
+.Input("weights: float32")
+.Attr("grid_shape: shape")
+.Attr("order: list(int) = []")
+.Attr("dx: list(int) = []")
+.Attr("periodic: list(int) = []")
+.Attr("fill_value: float = 0")
+.Attr("debug: bool = false")
+.Output("grid: float32");
+
 
 REGISTER_OP("SplineGridCoefficientGradient")
 .Input("positions: float32")
@@ -150,6 +162,87 @@ public:
 			positions_flat.data(),
 			coefficients_flat.data(),
 			interpolation_flat.data());
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - start;
+		if (debug) {
+			std::cout << "Interpolation performance: " << N * n_neigh*NCHAN / elapsed.count() << "C/s" << std::endl;
+		}
+	}
+
+};
+
+
+template<::DeviceType Device>
+class SplineMappingOp : public OpKernel {
+private:
+	TensorShapeProto grid_shape;
+	std::vector<int> K;
+	std::vector<int> dx;
+	std::vector<int> periodic;
+	float fill_value;
+	bool debug;
+public:
+	explicit SplineMappingOp(OpKernelConstruction* context) : OpKernel(context) {
+		context->GetAttr("grid_shape", &grid_shape);
+		context->GetAttr("order", &K);
+		context->GetAttr("dx", &dx);
+		context->GetAttr("periodic", &periodic);
+		context->GetAttr("fill_value", &fill_value);
+		context->GetAttr("debug", &debug);
+	}
+
+	void Compute(OpKernelContext* context) override {
+		const Tensor &positions = context->input(0);
+		const Tensor &values = context->input(1);
+		const Tensor &weights = context->input(2);
+
+		TensorShape shape(grid_shape);
+		shape.AddDim(values.dim_size(values.dims()-1));
+
+
+		Tensor *output_grid = NULL;
+		OP_REQUIRES_OK(context, context->allocate_output(0, shape,
+			&output_grid));
+
+
+		auto positions_flat = positions.flat<float>();
+		auto values_flat = values.flat<float>();
+		auto weights_flat = weights.flat<float>();
+		auto grid_flat = output_grid->flat<float>();
+
+		// COMPUTE
+		unsigned int NDIMS = positions.dim_size(positions.dims() - 1);
+		unsigned int NCHAN = values.dim_size(values.dims() - 1);
+		unsigned int N = positions_flat.size() / NDIMS;
+		while (K.size() < NDIMS) {
+			K.push_back(DEFAULT_ORDER);
+		}
+		while (dx.size() < NDIMS) {
+			dx.push_back(0);
+		}
+		while (periodic.size() < NDIMS) {
+			periodic.push_back(false);
+		}
+
+		Grid grid;
+		for (unsigned int i = 0; i < NDIMS; i++) {
+			grid.K.push_back(K[i]);
+			grid.dims.push_back(output_grid->dim_size(i));
+			grid.dx.push_back(dx[i]);
+			grid.periodic.push_back(periodic[i]);
+		}
+		grid.channels = NCHAN;
+		grid.fill_value = fill_value;
+		int n_neigh = grid.neighbors();
+
+		auto start = std::chrono::high_resolution_clock::now();
+		SplineMappingFunctor<Device>()(context,
+			grid, N,
+			positions_flat.data(),
+			values_flat.data(),
+			weights_flat.data(),
+			grid_flat.data());
+		
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
 		if (debug) {
@@ -317,11 +410,13 @@ public:
 
 REGISTER_KERNEL_BUILDER(Name("BSpline").Device(DEVICE_CPU), BSplineOp<CPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_CPU), SplineGridOp<CPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineMapping").Device(DEVICE_CPU), SplineMappingOp<CPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_CPU), SplineGridCoefficientGradientOp<CPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_CPU), SplineGridPositionGradientOp<CPU>);
 
 #ifdef USE_GPU
 REGISTER_KERNEL_BUILDER(Name("SplineGrid").Device(DEVICE_GPU), SplineGridOp<GPU>);
+REGISTER_KERNEL_BUILDER(Name("SplineMapping").Device(DEVICE_GPU), SplineMappingOp<GPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_GPU), SplineGridCoefficientGradientOp<GPU>);
 REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_GPU), SplineGridPositionGradientOp<GPU>);
 #endif

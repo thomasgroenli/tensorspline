@@ -13,7 +13,7 @@ has_cuda = "CUDA_PATH" in os.environ
 
 
 GPU_flag = {True: '-gpu', False: ''}
-tf_req = 'tensorflow{0}'.format(GPU_flag[has_cuda])
+tf_req = 'tensorflow{0}==2.0'.format(GPU_flag[has_cuda])
 
 def create_extension(distribution):
 
@@ -43,7 +43,7 @@ def create_extension(distribution):
                       ("USE_MULTITHREAD",None)
             ]
       
-            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc']
+            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = []
       
@@ -52,7 +52,7 @@ def create_extension(distribution):
                   include_dirs.append(str(pathlib.Path(os.environ['CUDA_PATH']) / 'include'))
                   library_dirs.append(str(pathlib.Path(os.environ['CUDA_PATH']) / 'lib' / 'x64'))
                   libraries.extend(['cuda','cudart','nvrtc'])
-                  sources.append('tensorspline/src/splinegrid_gpu.cc')
+                  sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc'])
 
       elif system == 'Linux':    
             inc_path = pathlib.Path(tf.sysconfig.get_include())
@@ -77,7 +77,7 @@ def create_extension(distribution):
                       ("USE_MULTITHREAD",None)
             ]
       
-            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc']
+            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = ['-std=c++11']
       
@@ -86,7 +86,7 @@ def create_extension(distribution):
                   include_dirs.append(str(pathlib.Path(os.environ['CUDA_PATH']) / 'include'))
                   library_dirs.append(str(pathlib.Path(os.environ['CUDA_PATH']) / 'lib64'))
                   libraries.extend(['cuda','cudart','nvrtc'])
-                  sources.append('tensorspline/src/splinegrid_gpu.cc')
+                  sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc'])
 
       else:
             raise Exception("Unknown target platform")
