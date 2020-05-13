@@ -75,13 +75,15 @@ def bspline_convolve(C,ps,dxs):
         C_tmp = tf.transpose(tf.reshape(tf.nn.conv1d(tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1]),tf.tile(kernel[:,None,None],[1,1,shape[-1]]),1,'SAME'),new_shape),permutation)
     return C_tmp
 
-def transform_axis(x, ks):
+def transform_axis(x, ks, periodic):
     axes = []
-    for i, k in enumerate(ks):
+    for i, (k, p) in enumerate(zip(ks,periodic)):
         xi = x[..., i]
         if k is None:
             res = xi
         else:
+            if p:
+                xi = ((xi-k[0])%(k[-1]-k[0]))+k[0]
             k = tf.constant(k)
             idx = tf.clip_by_value(tf.reshape(tf.searchsorted(k[None],tf.reshape(xi,[-1])),xi.shape),1,len(k)-1)
             a,b = tf.gather(k,idx-1), tf.gather(k,idx)
