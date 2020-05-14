@@ -13,7 +13,7 @@ has_cuda = "CUDA_PATH" in os.environ
 
 
 GPU_flag = {True: '-gpu', False: ''}
-tf_req = 'tensorflow{0}==2.0'.format(GPU_flag[has_cuda])
+tf_req = 'tensorflow{0}'.format(GPU_flag[has_cuda])
 
 def create_extension(distribution):
 
