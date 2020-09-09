@@ -54,7 +54,7 @@ def create_extension(distribution):
                   libraries.extend(['cuda','cudart','nvrtc'])
                   sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc'])
 
-      elif system == 'Linux':    
+      elif system in ['Darwin', 'Linux']:
             inc_path = pathlib.Path(tf.sysconfig.get_include())
 
             import distutils
