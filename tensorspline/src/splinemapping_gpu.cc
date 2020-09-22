@@ -43,7 +43,7 @@ __global__ void zero(int N, int channels, float *grid) {
 __global__ void normalize(int N, int channels, float *grid, float *density) {
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
         for(int j=0; j<channels; j++) {
-            grid[i*channels+j] /= density[i];
+            grid[i*channels+j] /= density[i*channels+j];
         }
     }
 }
@@ -112,9 +112,9 @@ __global__ void spline_mapping_kernel_gpu(int N, int ndims, int n_neigh, int cha
 			}
 			// Accumulate contribution in each channel
 			for (int k = 0; k < channels; k++) {
-                atomicAdd(&grid[flat*channels + k], weights[i] * Wij * values[channels*i + k]);
+                atomicAdd(&grid[flat*channels + k], weights[channels*i + k] * Wij * values[channels*i + k]);
+				atomicAdd(&density[flat*channels + k], weights[channels*i + k] * Wij);
             }
-            atomicAdd(&density[flat], weights[i] * Wij);
 		}
 	}
 }
@@ -206,7 +206,7 @@ struct SplineMappingFunctor<GPU, T> {
 
 
         float *density;
-        cudaMalloc(&density, num_points * sizeof(float));
+        cudaMalloc(&density, num_points * channels * sizeof(float));
 
 
         int zero_chan;

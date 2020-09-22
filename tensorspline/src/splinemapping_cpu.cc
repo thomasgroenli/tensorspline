@@ -45,9 +45,9 @@ int *idx = new int[ndims];
                 while(!locks[flat].compare_exchange_strong(lock_var, true)) {lock_var=false;}
 
                 for (int k = 0; k < channels; k++) {
-                    grid[flat*channels + k] += weights[i] * Wij * values[channels*i + k];
+                    grid[flat*channels + k] += weights[i*channels + k] * Wij * values[channels*i + k];
+					density[flat*channels + k] += weights[i*channels + k] * Wij;
                 }
-				density[flat] += weights[i] * Wij;
 
                 locks[flat].store(false);
             }
@@ -74,12 +74,13 @@ struct SplineMappingFunctor<CPU, T> {
 		std::vector<int> periodic = grid.periodic;
 
         lock *locks = new lock[grid.num_points()];
-        float *density = new float[grid.num_points()];
+        float *density = new float[channels*grid.num_points()];
         for(int i=0; i<grid.num_points(); i++) {
             locks[i] = false;
-            density[i] = 0;
+            
 			for(int j=0; j<channels; j++) {
 				output_grid[i*channels+j] = 0;
+				density[i*channels + j] = 0;
 			}
         }
 
@@ -94,7 +95,7 @@ struct SplineMappingFunctor<CPU, T> {
 
         for(int i=0; i<grid.num_points(); i++) {
 			for(int j=0; j<channels; j++) {
-				output_grid[channels*i+j] /= density[i];
+				output_grid[channels*i+j] /= density[channels*i+j];
 			}
         }
 
