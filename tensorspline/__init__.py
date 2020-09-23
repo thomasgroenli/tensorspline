@@ -83,11 +83,16 @@ def transform_axis(x, ks, periodic):
             res = xi
         else:
             if p:
-                xi = ((xi-k[0])%(k[-1]-k[0]))+k[0]
-            k = tf.constant(k)
-            idx = tf.clip_by_value(tf.reshape(tf.searchsorted(k[None],tf.reshape(xi,[-1])),xi.shape),1,len(k)-1)
+                k = [k[-1]-p]+list(k)+[k[0]+p]
+                xi = xi % p
+
+            k = tf.constant(k,x.dtype)
+            idx = tf.reshape(tf.searchsorted(k[None],tf.reshape(xi,[-1])),xi.shape)
+            if not p:
+                idx = tf.clip_by_value(idx,0,len(k)-1)
+            
             a,b = tf.gather(k,idx-1), tf.gather(k,idx)
-            res = ((xi-a)/(b-a)+tf.cast(idx,x.dtype)-1)/(len(k)-1)
+            res = ((xi-a)/(b-a)+(tf.cast(idx,x.dtype)-1)-bool(p))/(len(k)-1-bool(p))
 
         axes.append(res)
     return tf.stack(axes,axis=-1)
