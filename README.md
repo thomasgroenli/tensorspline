@@ -2,24 +2,24 @@
 
 ## Introduction
 
-This package provides support for uniform B-spline tensor product interpolation and gradients of arbitrary dimensions, orders and differentials in TensorFlow.
+This package provides support for B-spline tensor product interpolation and gradients of arbitrary dimensions, orders and differentials in TensorFlow.
 
 To contribute to this project, talk to Thomas Grønli (thomas.gronli@gmail.com)
 
-## Usage
-### Installation
+## Installation
 
 Install from the command line with a C/C++ compiler suite installed
 
 ```console
-$ pip install git+https://bitbucket.org/ntnuultrasoundgroup/tensorspline.git --upgrade --global-option=build_ext --global-option="--cuda=auto"
+$ pip install --upgrade git+https://bitbucket.org/ntnuultrasoundgroup/tensorspline.git \
+              --global-option=build_ext --global-option="--cuda=auto"
 ```
 
 
-### Reference
+## Reference
 The available functions have the following signatures  
 
-#### spline_grid
+### spline_grid
 
 - ``interpolation = spline_grid(positions, coefficients, order=[], dx=[], periodic=[], fill_value=0)``
 
@@ -46,7 +46,7 @@ Returns
 
 
 
-#### spline_mapping
+### spline_mapping
 
 - ``mapping = spline_mapping(positions, values, weights, grid_shape, order=[], dx=[], periodic=[], fill_value=0)``
 
