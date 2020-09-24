@@ -128,7 +128,7 @@ class custom_build_ext(build_ext.build_ext):
 
 core.setup(name='tensorspline',
       description='Tensorflow operation for nD spline interpolation',
-      version='1.1.0',
+      version='1.1.1',
       author='Thomas Grønli',
       author_email='thomas.gronli@gmail.com',
       packages=['tensorspline'],

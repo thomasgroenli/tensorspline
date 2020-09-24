@@ -50,7 +50,6 @@ def transform_axis(x, axis):
             k = [ki%axis.period for ki in k]
             k = [k[-1]-axis.period]+k+[k[0]+axis.period]
 
-            print(k)
             x = x % axis.period
 
         k = tf.constant(k, x.dtype)
