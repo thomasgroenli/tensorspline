@@ -421,3 +421,10 @@ REGISTER_KERNEL_BUILDER(Name("SplineGridCoefficientGradient").Device(DEVICE_GPU)
 REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_GPU), SplineGridPositionGradientOp<GPU>);
 #endif
 
+
+extern "C" {
+    void set_launch_config(int threads, int blocks) {
+	    THREADS = threads;
+	    BLOCKS = blocks;
+    }
+};

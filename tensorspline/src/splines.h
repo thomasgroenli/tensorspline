@@ -15,6 +15,10 @@
 using namespace tensorflow;
 #define DEFAULT_ORDER 3
 
+static int THREADS = 128;
+static int BLOCKS = 1024;
+
+
 struct Grid {
 	std::vector<int> K; // Spline orders
 	std::vector<int> dims;

@@ -4,8 +4,6 @@
 #include <cuda.h>
 #include <nvrtc.h>
 #include <cuda_runtime.h>
-#define THREADS 256
-#define BLOCKS 1024
 #include <iostream>
 
 

@@ -1,5 +1,7 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
+import ctypes
+
 import os
 
 from distutils.sysconfig import get_config_var
@@ -28,3 +30,10 @@ try:
         
 except KeyError:
     pass
+
+
+cdll = ctypes.CDLL(get_library_path())
+cdll.set_launch_config.argtypes = [ctypes.c_int, ctypes.c_int]
+cdll.set_launch_config.restype = None
+
+set_launch_config = cdll.set_launch_config

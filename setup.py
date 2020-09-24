@@ -123,7 +123,7 @@ class custom_build_ext(build_ext.build_ext):
             super().run()
             
       def get_export_symbols(self,ext):
-            return ext.export_symbols
+            return ext.export_symbols+['set_launch_config']
             
 
 core.setup(name='tensorspline',
