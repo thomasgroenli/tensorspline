@@ -104,7 +104,7 @@ struct PaddingFunctor {
 };
 template<::DeviceType Device, typename T = float>
 struct PaddingGradientFunctor {
-	void operator()(OpKernelContext *, std::vector<int>, std::vector<int>, std::vector<int>, std::vector<int>, const float *, const float *, float *);
+	void operator()(OpKernelContext *, std::vector<int>, std::vector<int>, std::vector<int>, std::vector<int>, const float *, float *);
 };
 
 template<::DeviceType Device, typename T = float>

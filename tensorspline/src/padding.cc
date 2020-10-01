@@ -7,8 +7,8 @@ REGISTER_OP("Padding")
 .Output("padded: float32");
 
 REGISTER_OP("PaddingGradient")
-.Input("tensor: float32")
 .Input("gradients: float32")
+.Attr("tensor_shape: shape")
 .Attr("padding: list(int)")
 .Attr("periodic: list(int)")
 .Output("grad: float32");
@@ -59,20 +59,20 @@ public:
 template<::DeviceType Device>
 class PaddingGradientOp : public OpKernel {
 private:
+	TensorShapeProto tensor_shape;
     std::vector<int> padding;
     std::vector<int> periodic;
 public:
 	explicit PaddingGradientOp(OpKernelConstruction* context) : OpKernel(context) {
+		context->GetAttr("tensor_shape", &tensor_shape);
 		context->GetAttr("padding", &padding);
-        context->GetAttr("periodic", &periodic);
-		
+        context->GetAttr("periodic", &periodic);		
 	}
 
 	void Compute(OpKernelContext* context) override {
-		const Tensor &tensor = context->input(0);
-		const Tensor &grad = context->input(1);
+		const Tensor &grad = context->input(0);
 
-		TensorShape tensor_shape = tensor.shape();
+		TensorShape shape(tensor_shape);
 		TensorShape grad_shape = grad.shape();
 
 		Tensor *out = NULL;
@@ -83,12 +83,11 @@ public:
 		std::vector<int> t_shape;
 		std::vector<int> g_shape;
 
-		for(int i=0; i<tensor_shape.dims(); i++) {
-            t_shape.push_back(tensor_shape.dim_size(i));
+		for(int i=0; i<shape.dims(); i++) {
+            t_shape.push_back(shape.dim_size(i));
 			g_shape.push_back(grad_shape.dim_size(i));
         }
 
-        auto tensor_flat = tensor.flat<float>();
 		auto grad_flat = grad.flat<float>();
 		auto out_flat = out->flat<float>();
 
@@ -97,7 +96,6 @@ public:
 			g_shape,
 			padding,
 			periodic,
-			tensor_flat.data(),
 			grad_flat.data(),
 			out_flat.data());
 	}
