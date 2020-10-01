@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-from .extension import b_spline
+from .extension import b_spline, padding
 
 
 def generate_prefilter_kernel(p):
@@ -25,19 +25,32 @@ def bspline_prefilter(C,ps):
     
     return C_tmp
 
+
 def generate_1d_kernel(p,dx):
-    x = tf.cast(tf.range(-(p-1)//2-1,p//2+2)[::-1],tf.float32)
+    x = tf.cast(tf.range(-(p-1)//2,p//2+1)[::-1],tf.float32)
     return b_spline(x,p,dx)
 
-def bspline_convolve(C,ps,dxs):
-    C_tmp = C
 
-    Ndim = len(ps)
+def bspline_convolve(C,ps,periodic,dxs):
+    pads = sum(([p//2,p//2] for p in ps),[])+[0,0]
+    pers = periodic+[False]
+    C_tmp = padding(C,pads,pers)
+    Ndim = len(C.shape)-1
 
     permutation = np.append(np.roll(list(range(Ndim)),1),Ndim)
 
-    for kernel in reversed([generate_1d_kernel(p,dx) for p,dx in zip(ps,dxs)]):
+    for kernel,p in reversed([(generate_1d_kernel(p,dx),p) for p,dx in zip(ps,dxs)]):
         shape = tf.shape(C_tmp)
-        new_shape = tf.concat([shape[:-2],[shape[-2]],[shape[-1]]],0)
-        C_tmp = tf.transpose(tf.reshape(tf.nn.conv1d(tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1]),tf.tile(kernel[:,None,None],[1,1,shape[-1]]),1,'SAME'),new_shape),permutation)
+        new_shape = tf.concat([shape[:-2],[shape[-2]-2*(p//2)],[shape[-1]]],0)
+        
+        C_tmp = tf.transpose(tf.reshape(tf.slice(tf.nn.conv2d(tf.reshape(C_tmp,
+                                                                         [tf.reduce_prod(shape[:-2]),shape[-2],-1,1]),
+                                                              tf.tile(kernel[:,None,None,None], 
+                                                                      [1,shape[-1],1,1]),
+                                                              [1,1,1,1],
+                                                              'SAME'),
+                                                 [0,p//2,0,0],
+                                                 [tf.reduce_prod(new_shape[:-2]),new_shape[-2],shape[-1],1]),
+                                        new_shape),
+                             permutation)
     return C_tmp

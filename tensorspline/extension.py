@@ -17,6 +17,7 @@ spline_module = tf.load_op_library(get_library_path())
 
 spline_grid = spline_module.spline_grid
 spline_mapping = spline_module.spline_mapping
+padding = spline_module.padding
 b_spline = spline_module.b_spline
 
 try:
