@@ -51,7 +51,7 @@ def create_extension(distribution, cuda_path=None):
                   include_dirs.append(str(pathlib.Path(cuda_path) / 'include'))
                   library_dirs.append(str(pathlib.Path(cuda_path) / 'lib' / 'x64'))
                   libraries.extend(['cuda','cudart','nvrtc'])
-                  sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc'])
+                  sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc', 'tensorspline/src/padding_gpu.cc'])
 
       elif system in ['Darwin', 'Linux']:
             inc_path = pathlib.Path(tf.sysconfig.get_include())
@@ -86,7 +86,7 @@ def create_extension(distribution, cuda_path=None):
                   include_dirs.append(str(pathlib.Path(cuda_path) / 'include'))
                   library_dirs.append(str(pathlib.Path(cuda_path) / 'lib64'))
                   libraries.extend(['cuda','cudart','nvrtc'])
-                  sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc'])
+                  sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc', 'tensorspline/src/padding_gpu.cc'])
 
       else:
             raise Exception("Unknown target platform")

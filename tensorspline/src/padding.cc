@@ -99,7 +99,6 @@ public:
 			grad_flat.data(),
 			out_flat.data());
 	}
-
 };
 
 
@@ -108,3 +107,8 @@ public:
 
 REGISTER_KERNEL_BUILDER(Name("Padding").Device(DEVICE_CPU), PaddingOp<CPU>);
 REGISTER_KERNEL_BUILDER(Name("PaddingGradient").Device(DEVICE_CPU), PaddingGradientOp<CPU>);
+
+#ifdef USE_GPU
+REGISTER_KERNEL_BUILDER(Name("Padding").Device(DEVICE_GPU), PaddingOp<GPU>);
+REGISTER_KERNEL_BUILDER(Name("PaddingGradient").Device(DEVICE_GPU), PaddingGradientOp<GPU>);
+#endif

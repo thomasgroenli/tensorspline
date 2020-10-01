@@ -127,10 +127,10 @@ static CUfunction kernel;
 static CUfunction zero;
 static CUfunction normalize;
 
-static bool compiled = false;
+static bool compiled_map = false;
 
 void compile_map() {
-	if (compiled) {
+	if (compiled_map) {
 		return;
 	}
 	cuInit(0);
@@ -166,7 +166,7 @@ void compile_map() {
     cuModuleGetFunction(&zero, module, "zero");
     cuModuleGetFunction(&normalize, module, "normalize");
 
-	compiled = true;
+	compiled_map = true;
 }
 
 
