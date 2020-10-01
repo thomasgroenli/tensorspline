@@ -54,7 +54,7 @@ template struct PaddingFunctor<CPU, float>;
 
 
 
-void padding_gradient_kernel_cpu(int start, int end, int ndims, int *out_shape, int *grad_shape, int *strides, int *padding, int *periodic, const float *tensor, const float *grad, float *out, lock *locks) {    
+void padding_gradient_kernel_cpu(int start, int end, int ndims, int *grad_shape, int *strides, int *padding, int *periodic, const float *tensor, const float *grad, float *out, lock *locks) {    
     bool lock_var = false;
     for (int i = start; i < end; ++i) {
 		int reduce = i;
@@ -108,10 +108,10 @@ struct PaddingGradientFunctor<CPU, T> {
 #ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 		Shard(pool->NumThreads(), pool, N, 1024, [&](int start, int end) {
-			padding_gradient_kernel_cpu(start, end, ndims, t_shape.data(), g_shape.data(), strides.data(), padding.data(), periodic.data(), tensor, grad, out, locks);
+			padding_gradient_kernel_cpu(start, end, ndims, g_shape.data(), strides.data(), padding.data(), periodic.data(), tensor, grad, out, locks);
         });
 #else
-        padding_gradient_kernel_cpu(0, N, ndims, t_shape.data(), g_shape.data(), strides.data(), padding.data(), periodic.data(), tensor, grad, out, locks);
+        padding_gradient_kernel_cpu(0, N, ndims, g_shape.data(), strides.data(), padding.data(), periodic.data(), tensor, grad, out, locks);
         
 #endif
 
