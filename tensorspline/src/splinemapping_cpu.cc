@@ -1,8 +1,6 @@
 #include "splines.h"
 
 
-typedef std::atomic_bool lock;
-
 void spline_mapping_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *values, const float *weights, float *grid, float *density, lock *locks) {
 int *idx = new int[ndims];
 	float *shift = new float[ndims];

@@ -18,6 +18,7 @@ using namespace tensorflow;
 static int THREADS = 128;
 static int BLOCKS = 1024;
 
+typedef std::atomic_bool lock;
 
 struct Grid {
 	std::vector<int> K; // Spline orders
@@ -96,6 +97,15 @@ struct Grid {
 enum DeviceType {CPU, GPU};
 
 float kernel_cpu(float x, int p, int dx, float *tmp);
+
+template<::DeviceType Device, typename T = float>
+struct PaddingFunctor {
+	void operator()(OpKernelContext *, std::vector<int>, std::vector<int>, std::vector<int>, const float *, float *);
+};
+template<::DeviceType Device, typename T = float>
+struct PaddingGradientFunctor {
+	void operator()(OpKernelContext *, std::vector<int>, std::vector<int>, std::vector<int>, std::vector<int>, const float *, const float *, float *);
+};
 
 template<::DeviceType Device, typename T = float>
 struct BSplineFunctor {

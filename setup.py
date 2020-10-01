@@ -40,7 +40,9 @@ def create_extension(distribution, cuda_path=None):
                       ("USE_MULTITHREAD",None)
             ]
       
-            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
+            sources = ['tensorspline/src/splines.cc', 
+            'tensorspline/src/padding.cc', 'tensorspline/src/padding_cpu.cc',
+             'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = []
       
@@ -74,7 +76,8 @@ def create_extension(distribution, cuda_path=None):
                       ("USE_MULTITHREAD",None)
             ]
       
-            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
+            sources = ['tensorspline/src/splines.cc', 'tensorspline/src/padding.cc',
+             'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = ['-std=c++11']
       

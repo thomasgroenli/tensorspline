@@ -31,6 +31,16 @@ try:
 except KeyError:
     pass
 
+try:
+    @ops.RegisterGradient("Padding")
+    def _(op, grad):
+        tensor = op.inputs[0]
+        pad_grad = spline_module.padding_gradient(tensor,grad,padding=op.get_attr('padding'),periodic=op.get_attr('periodic'))
+        return [pad_grad]
+        
+except KeyError:
+    pass
+
 
 cdll = ctypes.CDLL(get_library_path())
 cdll.set_launch_config.argtypes = [ctypes.c_int, ctypes.c_int]
