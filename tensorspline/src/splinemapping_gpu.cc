@@ -104,7 +104,7 @@ __global__ void spline_mapping_kernel_gpu(int N, int ndims, int n_neigh, int cha
 				else {
 					flat += strides[k] * fminf(fmaxf(idx[blockDim.x*k] + offset, 0), grid_dim[k] - 1);
 				}
-				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(dx[k]));
+				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
 				reduce /= K[k] + 1;
 
 			}

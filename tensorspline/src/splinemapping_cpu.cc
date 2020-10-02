@@ -36,7 +36,7 @@ int *idx = new int[ndims];
 				else {
 					flat += strides[k] * fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1);
 				}
-				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(dx[k]));
+				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
 				reduce /= K[k] + 1;
 			}
             if(valid) {

@@ -92,7 +92,7 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 				else {
 					flat += strides[k] * fminf(fmaxf(idx[blockDim.x*k] + offset, 0), grid_dim[k] - 1);
 				}
-				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(dx[k]));
+				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
 				reduce /= K[k] + 1;
 
 			}
@@ -164,7 +164,7 @@ __global__ void spline_grid_coefficient_gradient_kernel_gpu(int N, int ndims, in
 					}
 				}
 
-				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k], float(dx[k]));
+				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
@@ -242,8 +242,8 @@ __global__ void spline_grid_position_gradient_kernel_gpu(int N, int ndims, int n
 				else {
 					flat += strides[k] * fminf(fmaxf(idx[blockDim.x*k] + offset, 0), grid_dim[k] - 1);
 				}
-				Wijs[blockDim.x*k] = kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(dx[k]));
-				dWijs[blockDim.x*k] = kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k] + 1, kernel_tmp)*powf(grid_dim[k]+periodic[k], float((dx[k] + 1)));
+				Wijs[blockDim.x*k] = kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
+				dWijs[blockDim.x*k] = kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k] + 1, kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float((dx[k] + 1)));
 				reduce /= K[k] + 1;
 			}
 

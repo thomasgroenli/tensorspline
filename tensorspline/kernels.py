@@ -25,32 +25,40 @@ def bspline_prefilter(C,ps):
     
     return C_tmp
 
-
 def generate_1d_kernel(p,dx):
-    x = tf.cast(tf.range(-(p-1)//2,p//2+1)[::-1],tf.float32)
+    x = tf.cast(tf.range(-(p-1)//2-1,p//2+2)[::-1],tf.float32)
     return b_spline(x,p,dx)
 
+def bspline_convolve(C,ps,periodics,dxs):
+    n_dim = len(C.shape)-1
 
-def bspline_convolve(C,ps,periodic,dxs):
-    pads = sum(([p//2,p//2] for p in ps),[])+[0,0]
-    pers = periodic+[False]
-    C_tmp = padding(C,pads,pers)
-    Ndim = len(C.shape)-1
-
-    permutation = np.append(np.roll(list(range(Ndim)),1),Ndim)
-
-    for kernel,p in reversed([(generate_1d_kernel(p,dx),p) for p,dx in zip(ps,dxs)]):
-        shape = tf.shape(C_tmp)
-        new_shape = tf.concat([shape[:-2],[shape[-2]-2*(p//2)],[shape[-1]]],0)
+    try:
+        n_chan = C.shape[-1].value
+    except AttributeError:
+        n_chan = C.shape[-1]
+    
+    pads = sum(([p//2+1,p//2+1] for p in ps),[])
+    C_tmp = [padding(C[...,i],pads,periodics) for i in range(n_chan)]
+    
+    permutation = np.roll(list(range(n_dim)),1)
+    
+    dx_factor = 1
+    
+    for i in range(len(C_tmp)):
+        data = C_tmp[i]
         
-        C_tmp = tf.transpose(tf.reshape(tf.slice(tf.nn.conv2d(tf.reshape(C_tmp,
-                                                                         [tf.reduce_prod(shape[:-2]),shape[-2],-1,1]),
-                                                              tf.tile(kernel[:,None,None,None], 
-                                                                      [1,shape[-1],1,1]),
-                                                              [1,1,1,1],
-                                                              'SAME'),
-                                                 [0,p//2,0,0],
-                                                 [tf.reduce_prod(new_shape[:-2]),new_shape[-2],shape[-1],1]),
-                                        new_shape),
-                             permutation)
-    return C_tmp
+        for p,periodic,dx in reversed(list(zip(ps,periodics,dxs))):
+            shape = tf.shape(data)
+            new_shape = tf.concat([shape[:-1],[shape[-1]-2*(p//2+1)]],0)
+
+            reshaped = tf.reshape(data,[tf.reduce_prod(shape[:-1]),shape[-1],1])
+            kernel = generate_1d_kernel(p,dx)[:,None,None]
+            conv = tf.nn.conv1d(reshaped,kernel,[1,1,1],'SAME')
+            sliced = tf.slice(conv,[0,p//2+1,0],[tf.reduce_prod(new_shape[:-1]),new_shape[-1],1])
+            data = tf.transpose(tf.reshape(sliced, new_shape),permutation)
+            if i==0:
+                dx_factor *= (tf.cast(new_shape[-1],tf.float32)-1+periodic)**dx
+ 
+        C_tmp[i] = data
+            
+    return tf.stack(C_tmp,axis=-1)*dx_factor

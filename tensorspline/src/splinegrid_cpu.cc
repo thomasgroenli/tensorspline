@@ -82,7 +82,7 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 				else {
 					flat += strides[k] * fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1);
 				}
-				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(dx[k]));
+				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
@@ -161,7 +161,7 @@ void spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, 
 						indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1) : 0;
 					}
 				}
-				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(dx[k]));
+				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
@@ -245,8 +245,8 @@ void spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int
 				else {
 					flat += strides[k] * fmin(fmax(idx[k] + offset, 0), grid_dim[k] - 1);
 				}
-				Wijs[k] = kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]+periodic[k], float(dx[k]));
-				dWijs[k] = kernel_cpu(shift[k] - offset, K[k], dx[k]+1, kernel_tmp)*powf(grid_dim[k]+periodic[k], float(dx[k]+1));
+				Wijs[k] = kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
+				dWijs[k] = kernel_cpu(shift[k] - offset, K[k], dx[k]+1, kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]+1));
 				reduce /= K[k] + 1;
 			}
 
