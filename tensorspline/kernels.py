@@ -29,7 +29,7 @@ def generate_1d_kernel(p,dx):
     x = tf.cast(tf.range(-(p-1)//2-1,p//2+2)[::-1],tf.float32)
     return b_spline(x,p,dx)
 
-def bspline_convolve(C,ps,periodics,dxs):
+def bspline_convolve_ungrouped(C,ps,periodics,dxs):
     n_dim = len(C.shape)-1
 
     try:
@@ -62,3 +62,36 @@ def bspline_convolve(C,ps,periodics,dxs):
         C_tmp[i] = data
             
     return tf.stack(C_tmp,axis=-1)*dx_factor
+
+
+def bspline_convolve_grouped(C,ps,periodics,dxs):
+    n_dim = len(C.shape)-1
+
+    try:
+        n_chan = C.shape[-1].value
+    except AttributeError:
+        n_chan = C.shape[-1]
+    
+    pads = sum(([p//2+1,p//2+1] for p in ps),[])+[0,0]
+    pers = list(periodics)+[False]
+    C_tmp = padding(C,pads,periodics)
+    
+    permutation = np.append(np.roll(list(range(n_dim)),1),n_dim)
+        
+    for p,periodic,dx in reversed(list(zip(ps,periodics,dxs))):
+        shape = tf.shape(C_tmp)
+        new_shape = tf.concat([shape[:-2],[shape[-2]-2*(p//2+1)],[shape[-1]]],0)
+        reshaped = tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1])
+        kernel = tf.tile(generate_1d_kernel(p,dx)[:,None,None],[1,1,shape[-1]])
+        conv = tf.nn.conv1d(reshaped,kernel,[1,1,1],'SAME')
+        sliced = tf.slice(conv,[0,p//2+1,0],[tf.reduce_prod(new_shape[:-2]),new_shape[-2],new_shape[-1]])
+        data = tf.transpose(tf.reshape(sliced, new_shape),permutation)
+        C_tmp = data*(tf.cast(new_shape[-2],tf.float32)-1+periodic)**dx
+ 
+    return C_tmp
+
+def bspline_convolve(C,ps,periodics,dxs):
+    try:
+        return bspline_convolve_grouped(C,ps,periodics,dxs)
+    except tf.errors.UnimplementedError:
+        return bspline_convolve_ungrouped(C,ps,periodics,dxs)
