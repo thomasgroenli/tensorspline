@@ -21,7 +21,9 @@ class SplineInterpolator:
         self.fill_value = fill_value
         
         if prefilter:
-            self.C = bspline_prefilter(tf.cast(C,tf.float32), [axis.order for axis in self.axes])
+            self.C = bspline_prefilter(tf.cast(C,tf.float32), 
+                                        [axis.order for axis in self.axes],
+                                        [axis.period for axis in self.axes])
         else:
             self.C = C
 
