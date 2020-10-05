@@ -154,15 +154,15 @@ void spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, 
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[k] + 1)) / 2 + (reduce % (K[k] + 1));
 
+				int out_pos;
+				if (periodic[k]) {
+					out_pos = (idx[k] + offset + grid_dim[k]) % grid_dim[k];
+				}
+				else {
+					int in_pos = idx[k] + offset;
+					out_pos = in_pos>=grid_dim[k]?2*(grid_dim[k]-1)-in_pos:abs(in_pos); 
+				}
 				for (int l = 0; l < channels; l++) {
-					int out_pos;
-					if (periodic[k]) {
-						out_pos = (idx[k] + offset + grid_dim[k]) % grid_dim[k];
-					}
-					else {
-						int in_pos = idx[k] + offset;
-						out_pos = strides[k] * (in_pos>=grid_dim[k]?2*(grid_dim[k]-1)-in_pos:fabs(in_pos)); 
-					}
 					indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? out_pos : 0;
 				}
 				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
@@ -192,14 +192,14 @@ struct SplineGridCoefficientGradientFunctor<CPU, T> {
 		std::vector<int> dx = grid.dx;
 		std::vector<int> periodic = grid.periodic;
 
-#ifdef USE_MULTITHREAD
+/*#ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 		Shard(pool->NumThreads(), pool, N, 1024, [&](int start, int end) {
 			spline_grid_coefficient_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, grad, indices, values);
 		});
-#else
+#else*/
 		spline_grid_coefficient_gradient_kernel_cpu(0, N, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, grad, indices, values);
-#endif
+//#endif
 	}
 };
 

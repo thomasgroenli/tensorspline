@@ -156,14 +156,14 @@ __global__ void spline_grid_coefficient_gradient_kernel_gpu(int N, int ndims, in
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[blockDim.x*k] + 1)) / 2 + (reduce % (K[k] + 1));
 				int out_pos;
+				if (periodic[k]) {
+					out_pos = (idx[blockDim.x*k] + offset + grid_dim[k]) % grid_dim[k];
+				}
+				else {
+					int in_pos = idx[blockDim.x*k] + offset;
+					out_pos = in_pos>=grid_dim[k]?2*(grid_dim[k]-1)-in_pos:fabsf(in_pos); 
+				}
 				for (int l = 0; l < channels; l++) {
-					if (periodic[k]) {
-						out_pos = (idx[blockDim.x*k] + offset + grid_dim[k]) % grid_dim[k];
-					}
-					else {
-						int in_pos = idx[blockDim.x*k] + offset;
-						out_pos = strides[k] * (in_pos>=grid_dim[k]?2*(grid_dim[k]-1)-in_pos:fabsf(in_pos)); 
-					}
 					indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? out_pos : 0;
 				}
 
