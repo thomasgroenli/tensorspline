@@ -19,6 +19,13 @@ __global__ void padding_zero(int N, float *tensor) {
 }
 
 
+__device__ int positive_modulo(int i, int n) {
+	if(n==0) {
+		return 0;
+	}
+    return (i % n + n) % n;
+}
+
 __global__ void padding_kernel_gpu(int N, int ndims, const int *out_shape_ptr, const int *strides_ptr, const int *padding_ptr, const int *periodic_ptr, const float *tensor, float *padded) {
 
 	extern __shared__ int shared_info[];
@@ -47,13 +54,13 @@ __global__ void padding_kernel_gpu(int N, int ndims, const int *out_shape_ptr, c
         int flat = 0;
         for (int j = ndims - 1; j >= 0; j--) {
             int idx = reduce % out_shape[j];
-            int in_pos = idx-padding[2*j];
             int in_span = out_shape[j]-padding[2*j]-padding[2*j+1];
+            int in_pos = positive_modulo(idx-padding[2*j],2*(in_span-!periodic[j]));
 
             if(periodic[j]) {
                 flat += strides[j]*((in_pos+in_span)%in_span);
             } else {
-                flat += strides[j] * fminf(fmaxf(in_pos, 0), in_span-1);
+                flat += strides[j] * (in_pos<in_span?in_pos:2*(in_span-1)-in_pos); 
             }
             
             reduce /= out_shape[j];
@@ -91,13 +98,13 @@ __global__ void padding_gradient_kernel_gpu(int N, int ndims, const int *grad_sh
         int flat = 0;
         for (int j = ndims - 1; j >= 0; j--) {
             int idx = reduce % grad_shape[j];
-            int in_pos = idx-padding[2*j];
             int in_span = grad_shape[j]-padding[2*j]-padding[2*j+1];
+            int in_pos = positive_modulo(idx-padding[2*j],2*(in_span-!periodic[j]));
 
             if(periodic[j]) {
                 flat += strides[j]*((in_pos+in_span)%in_span);
             } else {
-                flat += strides[j] * fminf(fmaxf(in_pos, 0), in_span-1);
+                flat += strides[j] * (in_pos<in_span?in_pos:2*(in_span-1)-in_pos);
             }
             
             reduce /= grad_shape[j];

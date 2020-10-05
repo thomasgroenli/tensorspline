@@ -131,3 +131,10 @@ template<::DeviceType Device, typename T = float>
 struct SplineMappingFunctor {
 	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
 };
+
+inline int positive_modulo(int i, int n) {
+    if(n==0) {
+        return 0;
+    }
+    return (i % n + n) % n;
+}

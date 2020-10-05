@@ -1,20 +1,20 @@
 #include "splines.h"
 
 
-
 void padding_kernel_cpu(int start, int end, int ndims, int *out_shape, int *strides, int *padding, int *periodic, const float *tensor, float *padded) {
     for (int i = start; i < end; ++i) {
 		int reduce = i;
         int flat = 0;
         for (int j = ndims - 1; j >= 0; j--) {
             int idx = reduce % out_shape[j];
-            int in_pos = idx-padding[2*j];
+
             int in_span = out_shape[j]-padding[2*j]-padding[2*j+1];
+            int in_pos = positive_modulo(idx-padding[2*j],2*(in_span-!periodic[j]));
 
             if(periodic[j]) {
-                flat += strides[j]*((in_pos+in_span)%in_span);
+                flat += strides[j] * (in_pos%in_span);
             } else {
-                flat += strides[j] * fmin(fmax(in_pos, 0), in_span-1);
+                flat += strides[j] * (in_pos<in_span?in_pos:2*(in_span-1)-in_pos); 
             }
             
             reduce /= out_shape[j];
@@ -53,7 +53,6 @@ struct PaddingFunctor<CPU, T> {
 template struct PaddingFunctor<CPU, float>;
 
 
-
 void padding_gradient_kernel_cpu(int start, int end, int ndims, int *grad_shape, int *strides, int *padding, int *periodic, const float *grad, float *out, lock *locks) {    
     bool lock_var = false;
     for (int i = start; i < end; ++i) {
@@ -61,13 +60,14 @@ void padding_gradient_kernel_cpu(int start, int end, int ndims, int *grad_shape,
         int flat = 0;
         for (int j = ndims - 1; j >= 0; j--) {
             int idx = reduce % grad_shape[j];
-            int in_pos = idx-padding[2*j];
+
             int in_span = grad_shape[j]-padding[2*j]-padding[2*j+1];
+            int in_pos = positive_modulo(idx-padding[2*j],2*(in_span-!periodic[j]));
 
             if(periodic[j]) {
                 flat += strides[j]*((in_pos+in_span)%in_span);
             } else {
-                flat += strides[j] * fmin(fmax(in_pos, 0), in_span-1);
+                flat += strides[j] * (in_pos<in_span?in_pos:2*(in_span-1)-in_pos);  
             }
             
             reduce /= grad_shape[j];
