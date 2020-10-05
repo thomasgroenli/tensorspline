@@ -5,7 +5,7 @@ from .extension import b_spline, padding
 
 def generate_prefilter_kernel(p):
     x = tf.range(-4*p,4*p+1,dtype=tf.float32)
-    y = tf.cast(b_spline(x,p,0),tf.complex64)
+    y = tf.cast(b_spline(x,p,0),tf.complex128)
     
     p = tf.cast(tf.signal.ifft(1/tf.signal.fft(y)),tf.float32)
     return p[2:]
