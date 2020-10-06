@@ -8,7 +8,7 @@ def generate_prefilter_kernel(p):
     y = tf.cast(b_spline(x,p,0),tf.complex128)
     
     p = tf.cast(tf.signal.ifft(1/tf.signal.fft(y)),tf.float32)
-    return p[2:]
+    return p[2:] or tf.constant([1],tf.float32)
 
 
 def generate_bspline_kernel(p,dx):
