@@ -4,7 +4,11 @@ REGISTER_OP("BSpline")
 .Input("x: float32")
 .Attr("order: int = 1")
 .Attr("dx: int = 0")
-.Output("bsx: float32");
+.Output("bsx: float32")
+.SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+  c->set_output(0,c->input(0));
+  return Status::OK();
+});
 
 
 REGISTER_OP("SplineGrid")

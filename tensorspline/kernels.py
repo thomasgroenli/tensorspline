@@ -33,8 +33,13 @@ def filter_ungrouped(C,kernels,periodics):
             shape = tf.shape(data)
             new_shape = tf.concat([shape[:-1],[shape[-1]]],0)
 
+            try:
+                kernel_length = kernel.shape[0].value
+            except AttributeError:
+                kernel_length = kernel.shape[0]
+
             reshaped = tf.reshape(data,[tf.reduce_prod(shape[:-1]),shape[-1],1])
-            padded = padding(reshaped,[0,0,len(kernel)//2,len(kernel)//2,0,0],[False,periodic,False])
+            padded = padding(reshaped,[0,0,kernel_length//2,kernel_length//2,0,0],[False,periodic,False])
             kernel = kernel[:,None,None]
             conv = tf.nn.conv1d(padded,kernel,[1,1,1],'VALID')
             data = tf.transpose(tf.reshape(conv, new_shape),permutation)
@@ -54,8 +59,13 @@ def filter_grouped(C,kernels,periodics):
         shape = tf.shape(C_tmp)
         new_shape = tf.concat([shape[:-2],[shape[-2]],[shape[-1]]],0)
         
+        try:
+            kernel_length = kernel.shape[0].value
+        except AttributeError:
+            kernel_length = kernel.shape[0]
+
         reshaped = tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1])
-        padded = padding(reshaped,[0,0,len(kernel)//2,len(kernel)//2,0,0],[False,periodic,False])
+        padded = padding(reshaped,[0,0,kernel_length//2,kernel_length//2,0,0],[False,periodic,False])
         kernel = tf.tile(kernel[:,None,None],[1,1,shape[-1]])
         conv = tf.nn.conv1d(padded,kernel,[1,1,1],'VALID')
         data = tf.transpose(tf.reshape(conv, new_shape),permutation)

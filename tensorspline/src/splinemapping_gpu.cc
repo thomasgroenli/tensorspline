@@ -208,14 +208,12 @@ struct SplineMappingFunctor<GPU, T> {
         cudaMalloc(&density, num_points * channels * sizeof(float));
 
 
-        int zero_chan;
         void *zero_args[] = {
             &num_points,
-            &zero_chan,
+            &channels,
             nullptr
         };
 
-        zero_chan = channels;
         zero_args[2] = &output_grid;
         cuLaunchKernel(zero,
 			BLOCKS, 1, 1,
@@ -224,7 +222,6 @@ struct SplineMappingFunctor<GPU, T> {
 			zero_args,
 			0);
 
-        zero_chan = 1;
         zero_args[2] = &density;
         cuLaunchKernel(zero,
 			BLOCKS, 1, 1,

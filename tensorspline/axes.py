@@ -2,14 +2,22 @@ import tensorflow as tf
 import numpy as np
 
 class Axis:
-    def __init__(self, order=1, period=0):
-        self.order = order
-        self.period = period
+    def __init__(self, order=None, period=None):
+        self.order = order if order is not None else 1
+        self.period = period if period is not None else 0
 
 class Unitary(Axis):
     def extent(self):
         return 1
         
+class Legacy(Unitary):
+    def __init__(self,extent=None,**kwargs):
+        self._extent = extent if extent is not None else 1
+        super().__init__(**kwargs)
+    
+    def extent(self):
+        return self._extent
+
 class Uniform(Axis):
     def __init__(self,a,b,**kwargs):
         assert b>=a
