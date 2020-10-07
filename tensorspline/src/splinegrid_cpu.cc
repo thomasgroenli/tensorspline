@@ -68,7 +68,7 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 		for (int j = 0; j < channels; j++) {
 			out[i*channels + j] = valid ? 0 : fill_value;
 		}
-
+		
 		for (int j = 0; j < n_neigh; j++) {
 			int reduce = j;
 			int flat = 0;
@@ -192,14 +192,14 @@ struct SplineGridCoefficientGradientFunctor<CPU, T> {
 		std::vector<int> dx = grid.dx;
 		std::vector<int> periodic = grid.periodic;
 
-/*#ifdef USE_MULTITHREAD
+#ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 		Shard(pool->NumThreads(), pool, N, 1024, [&](int start, int end) {
 			spline_grid_coefficient_gradient_kernel_cpu(start, end, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, grad, indices, values);
 		});
-#else*/
+#else
 		spline_grid_coefficient_gradient_kernel_cpu(0, N, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, grad, indices, values);
-//#endif
+#endif
 	}
 };
 
