@@ -1,4 +1,4 @@
-﻿import setuptools as core
+import setuptools as core
 import setuptools.extension as extension
 import setuptools.command.build_ext as build_ext
 import os
@@ -45,6 +45,7 @@ def create_extension(distribution, cuda_path=None):
              'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = []
+            extra_link_args = []
       
             if cuda_path is not None:
                   macros.append(("USE_GPU",None))
@@ -81,6 +82,7 @@ def create_extension(distribution, cuda_path=None):
              'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = ['-std=c++11']
+            extra_link_args = ['-stdlib=libc++']
       
             if cuda_path is not None:
                   macros.append(("USE_GPU",None))
@@ -99,7 +101,9 @@ def create_extension(distribution, cuda_path=None):
                                      libraries = libraries,
                                      library_dirs = library_dirs,
                                      sources = sources,
-                                     extra_compile_args = extra_compile_args
+                                     extra_compile_args = extra_compile_args,
+                                     extra_link_args = extra_link_args
+                                
             )
       ext._needs_stub = False
       return ext
