@@ -35,10 +35,14 @@ __global__ void zero(int N, int channels, float *grid) {
     }
 }
 
-__global__ void normalize(int N, int channels, float *grid, float *density) {
+__global__ void normalize(int N, int channels, float fill_value, float *grid, float *density) {
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
         for(int j=0; j<channels; j++) {
-            grid[i*channels+j] /= density[i*channels+j];
+			if(density[i*channels+j]) {
+            	grid[i*channels+j] /= density[i*channels+j];
+			} else {
+				grid[i*channels+j] = fill_value;
+			}
         }
     }
 }
@@ -179,6 +183,7 @@ struct SplineMappingFunctor<GPU, T> {
 		int channels = grid.channels;
         int max_order = grid.maxorder();
         int num_points = grid.num_points();
+		float fill_value = grid.fill_value;
 		std::vector<int> strides = grid.strides();
 		std::vector<int> grid_dim = grid.dims;
 		std::vector<int> K = grid.K;
@@ -260,6 +265,7 @@ struct SplineMappingFunctor<GPU, T> {
         void *normalize_args[] = {
             &num_points, 
             &channels, 
+			&fill_value,
             &output_grid, 
             &density
         };

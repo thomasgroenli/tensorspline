@@ -66,6 +66,8 @@ struct SplineMappingFunctor<CPU, T> {
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
 		int channels = grid.channels;
+		float fill_value = grid.fill_value;
+		
 		std::vector<int> strides = grid.strides();
 		std::vector<int> grid_dim = grid.dims;
 		std::vector<int> K = grid.K;
@@ -94,7 +96,11 @@ struct SplineMappingFunctor<CPU, T> {
 
         for(int i=0; i<grid.num_points(); i++) {
 			for(int j=0; j<channels; j++) {
-				output_grid[channels*i+j] /= density[channels*i+j];
+				if(density[channels*i+j]) {
+					output_grid[channels*i+j] /= density[channels*i+j];
+				} else {
+					output_grid[channels*i+j] = fill_value;
+				}
 			}
         }
 
