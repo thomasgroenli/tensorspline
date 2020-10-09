@@ -1,9 +1,4 @@
-#define EIGEN_USE_GPU
-
 #include "splines.h"
-#include <cuda.h>
-#include <nvrtc.h>
-#include <cuda_runtime.h>
 #include <iostream>
 
 
@@ -285,7 +280,7 @@ void compile() {
 	if (compiled) {
 		return;
 	}
-	cuInit(0);
+	CudaCheckDriverCall(cuInit(0));
 	nvrtcProgram prog;
 	nvrtcCreateProgram(&prog,
 		kernels,
@@ -313,10 +308,10 @@ void compile() {
 
 	nvrtcDestroyProgram(&prog);
 
-	cuModuleLoadDataEx(&module, ptx, 0, 0, 0);
-	cuModuleGetFunction(&kernel, module, "spline_grid_kernel_gpu");
-	cuModuleGetFunction(&kernel_coefficient_gradient, module, "spline_grid_coefficient_gradient_kernel_gpu");
-	cuModuleGetFunction(&kernel_position_gradient, module, "spline_grid_position_gradient_kernel_gpu");
+	CudaCheckDriverCall(cuModuleLoadDataEx(&module, ptx, 0, 0, 0));
+	CudaCheckDriverCall(cuModuleGetFunction(&kernel, module, "spline_grid_kernel_gpu"));
+	CudaCheckDriverCall(cuModuleGetFunction(&kernel_coefficient_gradient, module, "spline_grid_coefficient_gradient_kernel_gpu"));
+	CudaCheckDriverCall(cuModuleGetFunction(&kernel_position_gradient, module, "spline_grid_position_gradient_kernel_gpu"));
 	compiled = true;
 }
 
@@ -342,17 +337,17 @@ struct SplineGridFunctor<GPU, T> {
 
 		int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr, *periodic_ptr;
 
-		cudaMalloc(&grid_dim_ptr, ndims * sizeof(int));
-		cudaMalloc(&strides_ptr, ndims * sizeof(int));
-		cudaMalloc(&K_ptr, ndims * sizeof(int));
-		cudaMalloc(&dx_ptr, ndims * sizeof(int));
-		cudaMalloc(&periodic_ptr, ndims * sizeof(int));
+		CudaSafeCall(cudaMalloc(&grid_dim_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&strides_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&K_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&dx_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&periodic_ptr, ndims * sizeof(int)));
 
-		cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		CudaSafeCall(cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
 
 		// Compute shared memory size
 		int shared_size = 5 * ndims * sizeof(int);
@@ -374,19 +369,19 @@ struct SplineGridFunctor<GPU, T> {
 			&positions, 
 			&coefficients, 
 			&out};
-		cuLaunchKernel(kernel,
+		CudaCheckDriverCall(cuLaunchKernel(kernel,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			shared_size, NULL,
 			args,
-			0);
+			0));
 
 		// Free resources
-		cudaFree(grid_dim_ptr);
-		cudaFree(strides_ptr);
-		cudaFree(K_ptr);
-		cudaFree(dx_ptr);
-		cudaFree(periodic_ptr);
+		CudaSafeCall(cudaFree(grid_dim_ptr));
+		CudaSafeCall(cudaFree(strides_ptr));
+		CudaSafeCall(cudaFree(K_ptr));
+		CudaSafeCall(cudaFree(dx_ptr));
+		CudaSafeCall(cudaFree(periodic_ptr));
 	}
 
 };
@@ -412,17 +407,17 @@ struct SplineGridCoefficientGradientFunctor<GPU, T> {
 
 		int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr, *periodic_ptr;
 
-		cudaMalloc(&grid_dim_ptr, ndims * sizeof(int));
-		cudaMalloc(&strides_ptr, ndims * sizeof(int));
-		cudaMalloc(&K_ptr, ndims * sizeof(int));
-		cudaMalloc(&dx_ptr, ndims * sizeof(int));
-		cudaMalloc(&periodic_ptr, ndims * sizeof(int));
+		CudaSafeCall(cudaMalloc(&grid_dim_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&strides_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&K_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&dx_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&periodic_ptr, ndims * sizeof(int)));
 
-		cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		CudaSafeCall(cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
 
 		// Compute shared memory size
 		int shared_size = 5 * ndims * sizeof(int);
@@ -446,19 +441,19 @@ struct SplineGridCoefficientGradientFunctor<GPU, T> {
 			&indices,
 			&values
 		};
-		cuLaunchKernel(kernel_coefficient_gradient,
+		CudaCheckDriverCall(cuLaunchKernel(kernel_coefficient_gradient,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			shared_size, NULL,
 			args,
-			0);
+			0));
 
 		// Free resources
-		cudaFree(grid_dim_ptr);
-		cudaFree(strides_ptr);
-		cudaFree(K_ptr);
-		cudaFree(dx_ptr);
-		cudaFree(periodic_ptr);
+		CudaSafeCall(cudaFree(grid_dim_ptr));
+		CudaSafeCall(cudaFree(strides_ptr));
+		CudaSafeCall(cudaFree(K_ptr));
+		CudaSafeCall(cudaFree(dx_ptr));
+		CudaSafeCall(cudaFree(periodic_ptr));
 	}
 
 };
@@ -485,17 +480,17 @@ struct SplineGridPositionGradientFunctor<GPU, T> {
 
 		int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr, *periodic_ptr;
 
-		cudaMalloc(&grid_dim_ptr, ndims * sizeof(int));
-		cudaMalloc(&strides_ptr, ndims * sizeof(int));
-		cudaMalloc(&K_ptr, ndims * sizeof(int));
-		cudaMalloc(&dx_ptr, ndims * sizeof(int));
-		cudaMalloc(&periodic_ptr, ndims * sizeof(int));
+		CudaSafeCall(cudaMalloc(&grid_dim_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&strides_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&K_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&dx_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&periodic_ptr, ndims * sizeof(int)));
 
-		cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+		CudaSafeCall(cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
 
 		// Compute shared memory size
 		int shared_size = 5 * ndims * sizeof(int);
@@ -522,19 +517,19 @@ struct SplineGridPositionGradientFunctor<GPU, T> {
 			&grad, 
 			&result
 		};
-		cuLaunchKernel(kernel_position_gradient,
+		CudaCheckDriverCall(cuLaunchKernel(kernel_position_gradient,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			shared_size, NULL,
 			args,
-			0);
+			0));
 
 		// Free resources
-		cudaFree(grid_dim_ptr);
-		cudaFree(strides_ptr);
-		cudaFree(K_ptr);
-		cudaFree(dx_ptr);
-		cudaFree(periodic_ptr);
+		CudaSafeCall(cudaFree(grid_dim_ptr));
+		CudaSafeCall(cudaFree(strides_ptr));
+		CudaSafeCall(cudaFree(K_ptr));
+		CudaSafeCall(cudaFree(dx_ptr));
+		CudaSafeCall(cudaFree(periodic_ptr));
 	}
 
 };

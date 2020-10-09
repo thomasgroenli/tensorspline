@@ -12,6 +12,15 @@
 #include <chrono>
 #include <stdio.h>
 
+#ifdef USE_GPU
+	#define EIGEN_USE_GPU
+	#include <cuda.h>
+	#include <nvrtc.h>
+	#include <cuda_runtime.h>
+	#include "CudaErrorChecks.h"
+#endif
+
+
 using namespace tensorflow;
 #define DEFAULT_ORDER 3
 

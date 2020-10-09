@@ -1,11 +1,5 @@
-#define EIGEN_USE_GPU
-
 #include "splines.h"
-#include <cuda.h>
-#include <nvrtc.h>
-#include <cuda_runtime.h>
 #include <iostream>
-
 
 
 const char *kernels_pad = R"(
@@ -132,7 +126,7 @@ void compile_pad() {
 	if (compiled_pad) {
 		return;
 	}
-	cuInit(0);
+	CudaCheckDriverCall(cuInit(0));
 	nvrtcProgram prog;
 	nvrtcCreateProgram(&prog,
 		kernels_pad,
@@ -160,10 +154,10 @@ void compile_pad() {
 
 	nvrtcDestroyProgram(&prog);
 
-	cuModuleLoadDataEx(&padding_module, ptx, 0, 0, 0);
-	cuModuleGetFunction(&padding_kernel, padding_module, "padding_kernel_gpu");
-    cuModuleGetFunction(&padding_gradient_kernel, padding_module, "padding_gradient_kernel_gpu");
-    cuModuleGetFunction(&padding_zero, padding_module, "padding_zero");
+	CudaCheckDriverCall(cuModuleLoadDataEx(&padding_module, ptx, 0, 0, 0));
+	CudaCheckDriverCall(cuModuleGetFunction(&padding_kernel, padding_module, "padding_kernel_gpu"));
+    CudaCheckDriverCall(cuModuleGetFunction(&padding_gradient_kernel, padding_module, "padding_gradient_kernel_gpu"));
+    CudaCheckDriverCall(cuModuleGetFunction(&padding_zero, padding_module, "padding_zero"));
 
 	compiled_pad = true;
 }
@@ -188,15 +182,15 @@ struct PaddingFunctor<GPU, T> {
 
         int *out_shape_ptr, *strides_ptr, *padding_ptr, *periodic_ptr;
 
-        cudaMalloc(&out_shape_ptr, ndims * sizeof(int));
-		cudaMalloc(&strides_ptr, ndims * sizeof(int));
-		cudaMalloc(&padding_ptr, 2*ndims * sizeof(int));
-		cudaMalloc(&periodic_ptr, ndims * sizeof(int));
+        CudaSafeCall(cudaMalloc(&out_shape_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&strides_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&padding_ptr, 2*ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&periodic_ptr, ndims * sizeof(int)));
 
-        cudaMemcpy(out_shape_ptr, out_shape.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(padding_ptr, padding.data(), 2*ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+        CudaSafeCall(cudaMemcpy(out_shape_ptr, out_shape.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(padding_ptr, padding.data(), 2*ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
 
 
         int shared_size = 5 * ndims * sizeof(int);
@@ -211,18 +205,18 @@ struct PaddingFunctor<GPU, T> {
 			&tensor,
             &padded};
 
-		cuLaunchKernel(padding_kernel,
+		CudaCheckDriverCall(cuLaunchKernel(padding_kernel,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			shared_size, NULL,
 			args,
-			0);
+			0));
 
         // Free resources
-		cudaFree(out_shape_ptr);
-		cudaFree(strides_ptr);
-		cudaFree(padding_ptr);
-		cudaFree(periodic_ptr);
+		CudaSafeCall(cudaFree(out_shape_ptr));
+		CudaSafeCall(cudaFree(strides_ptr));
+		CudaSafeCall(cudaFree(padding_ptr));
+		CudaSafeCall(cudaFree(periodic_ptr));
     }
 
 };
@@ -253,15 +247,15 @@ struct PaddingGradientFunctor<GPU, T> {
 
         int *grad_shape_ptr, *strides_ptr, *padding_ptr, *periodic_ptr;
 
-        cudaMalloc(&grad_shape_ptr, ndims * sizeof(int));
-		cudaMalloc(&strides_ptr, ndims * sizeof(int));
-		cudaMalloc(&padding_ptr, 2*ndims * sizeof(int));
-		cudaMalloc(&periodic_ptr, ndims * sizeof(int));
+        CudaSafeCall(cudaMalloc(&grad_shape_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&strides_ptr, ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&padding_ptr, 2*ndims * sizeof(int)));
+		CudaSafeCall(cudaMalloc(&periodic_ptr, ndims * sizeof(int)));
 
-        cudaMemcpy(grad_shape_ptr, g_shape.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(padding_ptr, padding.data(), 2*ndims * sizeof(int), cudaMemcpyHostToDevice);
-		cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice);
+        CudaSafeCall(cudaMemcpy(grad_shape_ptr, g_shape.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(padding_ptr, padding.data(), 2*ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
 
 
 
@@ -270,12 +264,12 @@ struct PaddingGradientFunctor<GPU, T> {
             &out
         };
 
-        cuLaunchKernel(padding_zero,
+        CudaCheckDriverCall(cuLaunchKernel(padding_zero,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			0, NULL,
 			zero_args,
-			0);
+			0));
 
         int shared_size = 5 * ndims * sizeof(int);
 
@@ -289,18 +283,18 @@ struct PaddingGradientFunctor<GPU, T> {
 			&grad,
             &out};
 
-		cuLaunchKernel(padding_gradient_kernel,
+		CudaCheckDriverCall(cuLaunchKernel(padding_gradient_kernel,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			shared_size, NULL,
 			args,
-			0);
+			0));
 
         // Free resources
-		cudaFree(grad_shape_ptr);
-		cudaFree(strides_ptr);
-		cudaFree(padding_ptr);
-		cudaFree(periodic_ptr);
+		CudaSafeCall(cudaFree(grad_shape_ptr));
+		CudaSafeCall(cudaFree(strides_ptr));
+		CudaSafeCall(cudaFree(padding_ptr));
+		CudaSafeCall(cudaFree(periodic_ptr));
     }
 
 };
