@@ -127,11 +127,11 @@ static CUfunction normalize;
 
 static bool compiled_map = false;
 
-void compile_map() {
+void compile_map(OpKernelContext *context) {
 	if (compiled_map) {
 		return;
 	}
-	CudaCheckDriverCall(cuInit(0));
+	CudaCheckDriverCall(context, cuInit(0));
 	nvrtcProgram prog;
 	nvrtcCreateProgram(&prog,
 		kernels_map,
@@ -159,10 +159,10 @@ void compile_map() {
 
 	nvrtcDestroyProgram(&prog);
 
-	CudaCheckDriverCall(cuModuleLoadDataEx(&module, ptx, 0, 0, 0));
-	CudaCheckDriverCall(cuModuleGetFunction(&kernel, module, "spline_mapping_kernel_gpu"));
-    CudaCheckDriverCall(cuModuleGetFunction(&zero, module, "zero"));
-    CudaCheckDriverCall(cuModuleGetFunction(&normalize, module, "normalize"));
+	CudaCheckDriverCall(context, cuModuleLoadDataEx(&module, ptx, 0, 0, 0));
+	CudaCheckDriverCall(context, cuModuleGetFunction(&kernel, module, "spline_mapping_kernel_gpu"));
+    CudaCheckDriverCall(context, cuModuleGetFunction(&zero, module, "zero"));
+    CudaCheckDriverCall(context, cuModuleGetFunction(&normalize, module, "normalize"));
 
 	compiled_map = true;
 }
@@ -172,7 +172,7 @@ void compile_map() {
 template<typename T>
 struct SplineMappingFunctor<GPU, T> {
 	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *values, const float *weights, float *output_grid) {
-		compile_map();
+		compile_map(context);
         
         int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
@@ -188,21 +188,21 @@ struct SplineMappingFunctor<GPU, T> {
 
         int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr, *periodic_ptr;
 
-        CudaSafeCall(cudaMalloc(&grid_dim_ptr, ndims * sizeof(int)));
-		CudaSafeCall(cudaMalloc(&strides_ptr, ndims * sizeof(int)));
-		CudaSafeCall(cudaMalloc(&K_ptr, ndims * sizeof(int)));
-		CudaSafeCall(cudaMalloc(&dx_ptr, ndims * sizeof(int)));
-		CudaSafeCall(cudaMalloc(&periodic_ptr, ndims * sizeof(int)));
+        CudaSafeCall(context, cudaMalloc(&grid_dim_ptr, ndims * sizeof(int)));
+		CudaSafeCall(context, cudaMalloc(&strides_ptr, ndims * sizeof(int)));
+		CudaSafeCall(context, cudaMalloc(&K_ptr, ndims * sizeof(int)));
+		CudaSafeCall(context, cudaMalloc(&dx_ptr, ndims * sizeof(int)));
+		CudaSafeCall(context, cudaMalloc(&periodic_ptr, ndims * sizeof(int)));
 
-		CudaSafeCall(cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
-		CudaSafeCall(cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
-		CudaSafeCall(cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
-		CudaSafeCall(cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
-		CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(context, cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(context, cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(context, cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(context, cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
+		CudaSafeCall(context, cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice));
 
 
         float *density;
-        CudaSafeCall(cudaMalloc(&density, num_points * channels * sizeof(float)));
+        CudaSafeCall(context, cudaMalloc(&density, num_points * channels * sizeof(float)));
 
 
         void *zero_args[] = {
@@ -212,7 +212,7 @@ struct SplineMappingFunctor<GPU, T> {
         };
 
         zero_args[2] = &output_grid;
-        CudaCheckDriverCall(cuLaunchKernel(zero,
+        CudaCheckDriverCall(context, cuLaunchKernel(zero,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			0, NULL,
@@ -220,7 +220,7 @@ struct SplineMappingFunctor<GPU, T> {
 			0));
 
         zero_args[2] = &density;
-        CudaCheckDriverCall(cuLaunchKernel(zero,
+        CudaCheckDriverCall(context, cuLaunchKernel(zero,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			0, NULL,
@@ -250,12 +250,12 @@ struct SplineMappingFunctor<GPU, T> {
 			&output_grid,
             &density};
 
-		cuLaunchKernel(kernel,
+		CudaCheckDriverCall(context, cuLaunchKernel(kernel,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			shared_size, NULL,
 			args,
-			0);
+			0));
 
         void *normalize_args[] = {
             &num_points, 
@@ -264,7 +264,7 @@ struct SplineMappingFunctor<GPU, T> {
             &density
         };
 
-        CudaCheckDriverCall(cuLaunchKernel(normalize,
+        CudaCheckDriverCall(context, cuLaunchKernel(normalize,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
 			0, NULL,
@@ -272,12 +272,12 @@ struct SplineMappingFunctor<GPU, T> {
 			0));
 
 		// Free resources
-		CudaSafeCall(cudaFree(grid_dim_ptr));
-		CudaSafeCall(cudaFree(strides_ptr));
-		CudaSafeCall(cudaFree(K_ptr));
-		CudaSafeCall(cudaFree(dx_ptr));
-		CudaSafeCall(cudaFree(periodic_ptr));
-        CudaSafeCall(cudaFree(density));
+		CudaSafeCall(context, cudaFree(grid_dim_ptr));
+		CudaSafeCall(context, cudaFree(strides_ptr));
+		CudaSafeCall(context, cudaFree(K_ptr));
+		CudaSafeCall(context, cudaFree(dx_ptr));
+		CudaSafeCall(context, cudaFree(periodic_ptr));
+        CudaSafeCall(context, cudaFree(density));
 	}
 };
 
