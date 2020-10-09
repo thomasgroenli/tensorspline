@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO)
 
 def create_extension(distribution, cuda_path=None):
 
-      tf = __import__("tensorflow")
-
+      tf = __import__('tensorflow')
+      
       system = platform.system()
 
       if system == 'Windows':
@@ -47,7 +47,7 @@ def create_extension(distribution, cuda_path=None):
             extra_compile_args = []
             extra_link_args = []
       
-            if cuda_path is not None:
+            if cuda_path is not None and tf.test.is_built_with_cuda():
                   macros.append(("USE_GPU",None))
                   include_dirs.append(str(pathlib.Path(cuda_path) / 'include'))
                   library_dirs.append(str(pathlib.Path(cuda_path) / 'lib' / 'x64'))
@@ -84,7 +84,7 @@ def create_extension(distribution, cuda_path=None):
             extra_compile_args = ['-std=c++11']
             extra_link_args = ['-stdlib=libc++']
       
-            if cuda_path is not None:
+            if cuda_path is not None and tf.test.is_built_with_cuda():
                   macros.append(("USE_GPU",None))
                   include_dirs.append(str(pathlib.Path(cuda_path) / 'include'))
                   library_dirs.append(str(pathlib.Path(cuda_path) / 'lib64'))
@@ -116,14 +116,23 @@ class custom_build_ext(build_ext.build_ext):
 
       def initialize_options(self):
             super().initialize_options()
-            self.cuda = None
+            self.cuda = 'auto'
       
       def finalize_options(self):
+            default_win_env = 'CUDA_PATH'
+            default_unix_path = '/usr/local/cuda'
+
             if self.cuda == 'auto':
-                  if 'CUDA_PATH' in os.environ:
-                        self.cuda = os.environ['CUDA_PATH']
+                  if default_win_env in os.environ:
+                        self.cuda = os.environ[default_win_env]
+                  elif os.path.exists(default_unix_path):
+                        self.cuda = default_unix_path
                   else:
                         self.cuda = None
+
+            elif self.cuda == 'none':
+                  self.cuda = None
+
             super().finalize_options()
 
       def run(self):
@@ -131,7 +140,7 @@ class custom_build_ext(build_ext.build_ext):
             super().run()
             
       def get_export_symbols(self,ext):
-            return ext.export_symbols+['set_launch_config']
+            return ext.export_symbols+['set_launch_config','cuda_enabled']
             
 
 core.setup(name='tensorspline',

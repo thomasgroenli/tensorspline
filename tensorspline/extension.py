@@ -47,4 +47,8 @@ cdll = ctypes.CDLL(get_library_path())
 cdll.set_launch_config.argtypes = [ctypes.c_int, ctypes.c_int]
 cdll.set_launch_config.restype = None
 
+cdll.cuda_enabled.argtypes = []
+cdll.cuda_enabled.restype = ctypes.c_bool
+
 set_launch_config = cdll.set_launch_config
+cuda_enabled = cdll.cuda_enabled

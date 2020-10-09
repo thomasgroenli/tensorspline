@@ -4,15 +4,14 @@
 
 This package provides support for B-spline tensor product interpolation and gradients of arbitrary dimensions, orders and differentials in TensorFlow.
 
-To contribute to this project, talk to Thomas Grønli (thomas.gronli@gmail.com)
+To contribute to this project, talk to Thomas Grï¿½nli (thomas.gronli@gmail.com)
 
 ## Installation
 
 Install from the command line with a C/C++ compiler suite installed
 
 ```console
-$ pip install --upgrade git+https://bitbucket.org/ntnuultrasoundgroup/tensorspline.git \
-              --global-option=build_ext --global-option="--cuda=auto"
+$ pip install --upgrade git+https://bitbucket.org/ntnuultrasoundgroup/tensorspline.git
 ```
 
 

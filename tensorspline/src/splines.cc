@@ -427,6 +427,14 @@ REGISTER_KERNEL_BUILDER(Name("SplineGridPositionGradient").Device(DEVICE_GPU), S
 
 
 extern "C" {
+	bool cuda_enabled() {
+		#ifdef USE_GPU
+			return true;
+		#else
+	    	return false;
+		#endif
+    }
+
     void set_launch_config(int threads, int blocks) {
 	    THREADS = threads;
 	    BLOCKS = blocks;
