@@ -4,7 +4,7 @@
 
 This package provides support for B-spline tensor product interpolation and gradients of arbitrary dimensions, orders and differentials in TensorFlow.
 
-To contribute to this project, talk to Thomas Gr�nli (thomas.gronli@gmail.com)
+To contribute to this project, talk to Thomas Grønli (thomas.gronli@gmail.com)
 
 ## Installation
 
