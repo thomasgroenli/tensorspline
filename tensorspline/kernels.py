@@ -10,9 +10,8 @@ def generate_prefilter_kernel(p):
     kernel = tf.cast(tf.signal.ifft(1/tf.signal.fft(y)),tf.float32)
     return kernel[2:] if p > 0 else tf.constant([1],tf.float32)
 
-
-def generate_bspline_kernel(p,dx):
-    x = tf.cast(tf.range(-(p-1)//2-1,p//2+2)[::-1],tf.float32)
+def generate_bspline_kernel(p,dx,staggered):
+    x = tf.cast(tf.range(-(p-1)//2-1-staggered,p//2+2)[::-1],tf.float32)+0.5*staggered
     return b_spline(x,p,dx)
 
 def filter_ungrouped(C,kernels,periodics):
@@ -31,15 +30,16 @@ def filter_ungrouped(C,kernels,periodics):
         data = C_tmp[i]
         for kernel,periodic in reversed(list(zip(kernels,periodics))):
             shape = tf.shape(data)
-            new_shape = tf.concat([shape[:-1],[shape[-1]]],0)
 
             try:
                 kernel_length = kernel.shape[0].value
             except AttributeError:
                 kernel_length = kernel.shape[0]
+            
+            new_shape = tf.concat([shape[:-1],[shape[-1]]-((kernel_length+1)%2)*(not periodic)],0)
 
             reshaped = tf.reshape(data,[tf.reduce_prod(shape[:-1]),shape[-1],1])
-            padded = padding(reshaped,[0,0,kernel_length//2,kernel_length//2,0,0],[False,periodic,False])
+            padded = padding(reshaped,[0,0,(kernel_length-1)//2,(kernel_length-1+periodic)//2,0,0],[False,periodic,False])
             kernel = kernel[:,None,None]
             conv = tf.nn.conv1d(padded,kernel,[1,1,1],'VALID')
             data = tf.transpose(tf.reshape(conv, new_shape),permutation)
@@ -57,15 +57,16 @@ def filter_grouped(C,kernels,periodics):
     
     for kernel,periodic in reversed(list(zip(kernels,periodics))):
         shape = tf.shape(C_tmp)
-        new_shape = tf.concat([shape[:-2],[shape[-2]],[shape[-1]]],0)
         
         try:
             kernel_length = kernel.shape[0].value
         except AttributeError:
             kernel_length = kernel.shape[0]
 
+        new_shape = tf.concat([shape[:-2],[shape[-2]-((kernel_length+1)%2)*(not periodic)],[shape[-1]]],0)
+
         reshaped = tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1])
-        padded = padding(reshaped,[0,0,kernel_length//2,kernel_length//2,0,0],[False,periodic,False])
+        padded = padding(reshaped,[0,0,(kernel_length-1)//2,(kernel_length-1+periodic)//2,0,0],[False,periodic,False])
         kernel = tf.tile(kernel[:,None,None],[1,1,shape[-1]])
         conv = tf.nn.conv1d(padded,kernel,[1,1,1],'VALID')
         data = tf.transpose(tf.reshape(conv, new_shape),permutation)
@@ -80,8 +81,8 @@ def filter(C,kernels,periodics):
     except tf.errors.UnimplementedError:
         return filter_ungrouped(C,kernels,periodics)
 
-def bspline_convolve(C,ps,periodics,dxs):
-    kernels = [generate_bspline_kernel(p,dx) for p,dx in zip(ps,dxs)]
+def bspline_convolve(C,ps,periodics,dxs,staggers):
+    kernels = [generate_bspline_kernel(p,dx,stagger) for p,dx,stagger in zip(ps,dxs,staggers)]
     dx_factor = tf.reduce_prod([(tf.cast(C.shape[i],tf.float32)-1+period)**dx 
                                     for i, (period,dx) in enumerate(zip(periodics,dxs))])
     return filter(C,kernels,periodics)*dx_factor

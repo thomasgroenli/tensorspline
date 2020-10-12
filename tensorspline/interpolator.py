@@ -35,7 +35,8 @@ class SplineInterpolator:
         if x is None:
             return bspline_convolve(self.C, ps=[axis.order for axis in self.axes],
                                             periodics=[bool(axis.period) for axis in self.axes],
-                                            dxs=[0 for axis in self.axes])
+                                            staggers=[True for _ in self.axes],
+                                            dxs=[0 for _ in self.axes])
         else:
             return spline_module.spline_grid(self.transform(x),
                                             self.C,
@@ -51,11 +52,12 @@ class SplineInterpolator:
                     dx = (dx,)
                 def _(x):
                     nonlocal dx
-                    if x is None:
-                        while len(dx)<self.ndim:
+                    while len(dx)<self.ndim:
                             dx = dx+(0,)
+                    if x is None:
                         res = bspline_convolve(self.C, ps=[axis.order for axis in self.axes],
                                                        periodics=[bool(axis.period) for axis in self.axes],
+                                                       staggers=[True for _ in self.axes],
                                                        dxs=dx)
                     else:
                         res = spline_module.spline_grid(self.transform(x),
