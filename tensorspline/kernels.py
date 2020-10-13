@@ -36,10 +36,10 @@ def filter_ungrouped(C,kernels,periodics):
             except AttributeError:
                 kernel_length = kernel.shape[0]
             
-            new_shape = tf.concat([shape[:-1],[shape[-1]]-((kernel_length+1)%2)*(not periodic)],0)
+            new_shape = tf.concat([shape[:-1],[shape[-1]-((kernel_length+1)%2)*(periodic!=1)]],0)
 
             reshaped = tf.reshape(data,[tf.reduce_prod(shape[:-1]),shape[-1],1])
-            padded = padding(reshaped,[0,0,(kernel_length-1)//2,(kernel_length-1+periodic)//2,0,0],[False,periodic,False])
+            padded = padding(reshaped,[0,0,(kernel_length-1)//2,(kernel_length-1+(periodic==1))//2,0,0],[False,periodic,False])
             kernel = kernel[:,None,None]
             conv = tf.nn.conv1d(padded,kernel,[1,1,1],'VALID')
             data = tf.transpose(tf.reshape(conv, new_shape),permutation)
@@ -63,10 +63,10 @@ def filter_grouped(C,kernels,periodics):
         except AttributeError:
             kernel_length = kernel.shape[0]
 
-        new_shape = tf.concat([shape[:-2],[shape[-2]-((kernel_length+1)%2)*(not periodic)],[shape[-1]]],0)
+        new_shape = tf.concat([shape[:-2],[shape[-2]-((kernel_length+1)%2)*(periodic!=1)],[shape[-1]]],0)
 
         reshaped = tf.reshape(C_tmp,[tf.reduce_prod(shape[:-2]),shape[-2],-1])
-        padded = padding(reshaped,[0,0,(kernel_length-1)//2,(kernel_length-1+periodic)//2,0,0],[False,periodic,False])
+        padded = padding(reshaped,[0,0,(kernel_length-1)//2,(kernel_length-1+(periodic==1))//2,0,0],[False,periodic,False])
         kernel = tf.tile(kernel[:,None,None],[1,1,shape[-1]])
         conv = tf.nn.conv1d(padded,kernel,[1,1,1],'VALID')
         data = tf.transpose(tf.reshape(conv, new_shape),permutation)
@@ -83,7 +83,7 @@ def filter(C,kernels,periodics):
 
 def bspline_convolve(C,ps,periodics,dxs,staggers):
     kernels = [generate_bspline_kernel(p,dx,stagger) for p,dx,stagger in zip(ps,dxs,staggers)]
-    dx_factor = tf.reduce_prod([(tf.cast(C.shape[i],tf.float32)-1+period)**dx 
+    dx_factor = tf.reduce_prod([(tf.cast(C.shape[i],tf.float32)-1+(period==1))**dx 
                                     for i, (period,dx) in enumerate(zip(periodics,dxs))])
     return filter(C,kernels,periodics)*dx_factor
 

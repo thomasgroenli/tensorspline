@@ -15,11 +15,11 @@ int *idx = new int[ndims];
 		for (int j = 0; j < ndims; j++) {
 			float tmp = positions[i*ndims + j];
 			
-			if (periodic[j]) {
+			if (periodic[j]==1) {
 				tmp = fmod(tmp,1) + (tmp < 0);
 			}
 			valid &= (0 <= tmp && tmp <= 1);
-			shift[j] = modff(tmp*(grid_dim[j] + periodic[j] - 1) + 0.5, &tmp) - 0.5;
+			shift[j] = modff(tmp*(grid_dim[j] + (periodic[j]==1) - 1) + 0.5, &tmp) - 0.5;
 			idx[j] = tmp;
 		}
 		
@@ -30,14 +30,19 @@ int *idx = new int[ndims];
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[k] + 1)) / 2 + (reduce % (K[k] + 1));
 
-				if (periodic[k]) {
-					flat += strides[k] * ((idx[k] + offset + grid_dim[k]) % grid_dim[k]);
+				int in_span = grid_dim[k];
+				int in_pos = idx[k]+offset;
+
+				if(periodic[k]==1) {
+					flat += strides[k] * positive_modulo(in_pos, in_span);
+				} else if(periodic[k]==-1) {
+					int reflect = positive_modulo(in_pos, 2*(in_span-1));
+					flat += strides[k] * (reflect<in_span?reflect:2*(in_span-1)-reflect); 
+				} else {
+					flat += strides[k] * fmin(fmax(in_pos, 0), in_span-1);
 				}
-				else {
-					int in_pos = idx[k] + offset;
-					flat += strides[k] * (in_pos>=grid_dim[k]?2*(grid_dim[k]-1)-in_pos:fabs(in_pos)); 
-				}
-				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
+				
+				Wij *= kernel_cpu(shift[k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+(periodic[k]==1), float(dx[k]));
 				reduce /= K[k] + 1;
 			}
             if(valid) {

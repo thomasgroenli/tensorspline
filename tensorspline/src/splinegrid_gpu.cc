@@ -23,6 +23,13 @@ float kernel_gpu(float x, int p, int dx, float *tmp) {
 	return tmp[0];
 }
 
+__device__ int positive_modulo(int i, int n) {
+	if(n==0) {
+		return 0;
+	}
+    return (i % n + n) % n;
+}
+
 extern "C" {
 __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const int *periodic_ptr, const float *positions, const float *coefficients, float *out) {
 
@@ -60,11 +67,11 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 		for (int j = 0; j < ndims; j++) {
 			float tmp = positions[i*ndims + j];
 			
-			if (periodic[j]) {
+			if (periodic[j]==1) {
 				tmp = fmodf(tmp, 1) + (tmp < 0);
 			}
 			valid &= (0 <= tmp && tmp <= 1);
-			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] + periodic[j] - 1) + 0.5, &tmp) - 0.5;
+			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] + (periodic[j]==1) - 1) + 0.5, &tmp) - 0.5;
 			idx[blockDim.x*j] = tmp;
 		}
 
@@ -81,14 +88,19 @@ __global__ void spline_grid_kernel_gpu(int N, int ndims, int n_neigh, int channe
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[blockDim.x*k] + 1)) / 2 + (reduce % (K[k] + 1));
 
-				if (periodic[k]) {
-					flat += strides[k] * ((idx[blockDim.x*k] + offset + grid_dim[k]) % grid_dim[k]);
+				int in_span = grid_dim[k];
+				int in_pos = idx[blockDim.x*k]+offset;
+
+				if(periodic[k]==1) {
+					flat += strides[k] * positive_modulo(in_pos, in_span);
+				} else if(periodic[k]==-1) {
+					int reflect = positive_modulo(in_pos, 2*(in_span-1));
+					flat += strides[k] * (reflect<in_span?reflect:2*(in_span-1)-reflect); 
+				} else {
+					flat += strides[k] * fminf(fmaxf(in_pos, 0), in_span-1);
 				}
-				else {
-					int in_pos = idx[blockDim.x*k] + offset;
-					flat += strides[k] * (in_pos>=grid_dim[k]?2*(grid_dim[k]-1)-in_pos:fabsf(in_pos)); 
-				}
-				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
+
+				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+(periodic[k]==1), float(dx[k]));
 				reduce /= K[k] + 1;
 
 			}
@@ -136,11 +148,11 @@ __global__ void spline_grid_coefficient_gradient_kernel_gpu(int N, int ndims, in
 		for (int j = 0; j < ndims; j++) {
 			float tmp = positions[i*ndims + j];
 			
-			if (periodic[j]) {
+			if (periodic[j]==1) {
 				tmp = fmodf(tmp, 1) + (tmp < 0);
 			}
 			valid &= (0 <= tmp && tmp <= 1);
-			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] + periodic[j] - 1) + 0.5, &tmp) - 0.5;
+			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] + (periodic[j]==1) - 1) + 0.5, &tmp) - 0.5;
 			idx[blockDim.x*j] = tmp;
 		}
 
@@ -150,19 +162,25 @@ __global__ void spline_grid_coefficient_gradient_kernel_gpu(int N, int ndims, in
 			float Wij = 1;
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[blockDim.x*k] + 1)) / 2 + (reduce % (K[k] + 1));
+				
+				int in_span = grid_dim[k];
+				int in_pos = idx[blockDim.x*k]+offset;
 				int out_pos;
-				if (periodic[k]) {
-					out_pos = (idx[blockDim.x*k] + offset + grid_dim[k]) % grid_dim[k];
+
+				if(periodic[k]==1) {
+					out_pos = positive_modulo(in_pos, in_span);
+				} else if(periodic[k]==-1) {
+					int reflect = positive_modulo(in_pos, 2*(in_span-1));
+					out_pos = (reflect<in_span?reflect:2*(in_span-1)-reflect); 
+				} else {
+					out_pos = fminf(fmaxf(in_pos, 0), in_span-1);
 				}
-				else {
-					int in_pos = idx[blockDim.x*k] + offset;
-					out_pos = in_pos>=grid_dim[k]?2*(grid_dim[k]-1)-in_pos:fabsf(in_pos); 
-				}
+
 				for (int l = 0; l < channels; l++) {
 					indices[i*n_neigh*channels*(ndims + 1) + j * channels*(ndims + 1) + l * (ndims + 1) + k] = valid ? out_pos : 0;
 				}
 
-				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
+				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+(periodic[k]==1), float(dx[k]));
 				reduce /= K[k] + 1;
 			}
 			for (int k = 0; k < channels; k++) {
@@ -215,11 +233,11 @@ __global__ void spline_grid_position_gradient_kernel_gpu(int N, int ndims, int n
 		for (int j = 0; j < ndims; j++) {
 			float tmp = positions[i*ndims + j];
 			
-			if (periodic[j]) {
+			if (periodic[j]==1) {
 				tmp = fmodf(tmp, 1) + (tmp < 0);
 			}
 			valid &= (0 <= tmp && tmp <= 1);
-			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] + periodic[j] - 1) + 0.5, &tmp) - 0.5;
+			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] + (periodic[j]==1) - 1) + 0.5, &tmp) - 0.5;
 			idx[blockDim.x*j] = tmp;
 		}
 
@@ -234,15 +252,21 @@ __global__ void spline_grid_position_gradient_kernel_gpu(int N, int ndims, int n
 
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[blockDim.x*k] + 1)) / 2 + (reduce % (K[k] + 1));
-				if(periodic[k]) {
-					flat += strides[k] * ((idx[blockDim.x*k] + offset + grid_dim[k]) % grid_dim[k]);
+				
+				int in_span = grid_dim[k];
+				int in_pos = idx[blockDim.x*k]+offset;
+
+				if(periodic[k]==1) {
+					flat += strides[j] * positive_modulo(in_pos, in_span);
+				} else if(periodic[k]==-1) {
+					int reflect = positive_modulo(in_pos, 2*(in_span-1));
+					flat += strides[k] * (reflect<in_span?reflect:2*(in_span-1)-reflect); 
+				} else {
+					flat += strides[k] * fminf(fmaxf(in_pos, 0), in_span-1);
 				}
-				else {
-					int in_pos = idx[blockDim.x*k] + offset;
-					flat += strides[k] * (in_pos>=grid_dim[k]?2*(grid_dim[k]-1)-in_pos:fabsf(in_pos)); 
-				}
-				Wijs[blockDim.x*k] = kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
-				dWijs[blockDim.x*k] = kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k] + 1, kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float((dx[k] + 1)));
+
+				Wijs[blockDim.x*k] = kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+(periodic[k]==1), float(dx[k]));
+				dWijs[blockDim.x*k] = kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k] + 1, kernel_tmp)*powf(grid_dim[k]-1+(periodic[k]==1), float((dx[k] + 1)));
 				reduce /= K[k] + 1;
 			}
 

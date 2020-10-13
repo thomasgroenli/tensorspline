@@ -25,6 +25,13 @@ float kernel_gpu(float x, int p, int dx, float *tmp) {
 	return tmp[0];
 }
 
+__device__ int positive_modulo(int i, int n) {
+	if(n==0) {
+		return 0;
+	}
+    return (i % n + n) % n;
+}
+
 extern "C" {
 
 __global__ void zero(int N, int channels, float *grid) {
@@ -83,11 +90,11 @@ __global__ void spline_mapping_kernel_gpu(int N, int ndims, int n_neigh, int cha
 		for (int j = 0; j < ndims; j++) {
 			float tmp = positions[i*ndims + j];
 			
-			if (periodic[j]) {
+			if (periodic[j]==1) {
 				tmp = fmodf(tmp, 1) + (tmp < 0);
 			}
 			valid &= (0 <= tmp && tmp <= 1);
-			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] + periodic[j] - 1) + 0.5, &tmp) - 0.5;
+			shift[blockDim.x*j] = modff(tmp*(grid_dim[j] + (periodic[j]==1) - 1) + 0.5, &tmp) - 0.5;
 			idx[blockDim.x*j] = tmp;
 		}
 
@@ -99,14 +106,19 @@ __global__ void spline_mapping_kernel_gpu(int N, int ndims, int n_neigh, int cha
 			for (int k = ndims - 1; k >= 0; k--) {
 				int offset = -(K[k] + 1 - int(shift[blockDim.x*k] + 1)) / 2 + (reduce % (K[k] + 1));
 
-				if (periodic[k]) {
-					flat += strides[k] * ((idx[blockDim.x*k] + offset + grid_dim[k]) % grid_dim[k]);
+				int in_span = grid_dim[k];
+				int in_pos = idx[blockDim.x*k]+offset;
+
+				if(periodic[k]==1) {
+					flat += strides[k] * positive_modulo(in_pos, in_span);
+				} else if(periodic[k]==-1) {
+					int reflect = positive_modulo(in_pos, 2*(in_span-1));
+					flat += strides[k] * (reflect<in_span?reflect:2*(in_span-1)-reflect); 
+				} else {
+					flat += strides[k] * fminf(fmaxf(in_pos, 0), in_span-1);
 				}
-				else {
-					int in_pos = idx[blockDim.x*k] + offset;
-					flat += strides[k] * (in_pos>=grid_dim[k]?2*(grid_dim[k]-1)-in_pos:fabsf(in_pos));
-				}
-				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+periodic[k], float(dx[k]));
+
+				Wij *= kernel_gpu(shift[blockDim.x*k] - offset, K[k], dx[k], kernel_tmp)*powf(grid_dim[k]-1+(periodic[k]==1), float(dx[k]));
 				reduce /= K[k] + 1;
 
 			}

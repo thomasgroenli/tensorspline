@@ -225,7 +225,7 @@ public:
 			dx.push_back(0);
 		}
 		while (periodic.size() < NDIMS) {
-			periodic.push_back(false);
+			periodic.push_back(0);
 		}
 
 		Grid grid;
@@ -293,7 +293,7 @@ public:
 			dx.push_back(0);
 		}
 		while (periodic.size() < NDIMS) {
-			periodic.push_back(false);
+			periodic.push_back(0);
 		}
 
 
@@ -373,7 +373,7 @@ public:
 			dx.push_back(0);
 		}
 		while (periodic.size() < NDIMS) {
-			periodic.push_back(false);
+			periodic.push_back(0);
 		}
 
 

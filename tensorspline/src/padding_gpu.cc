@@ -48,13 +48,17 @@ __global__ void padding_kernel_gpu(int N, int ndims, const int *out_shape_ptr, c
         int flat = 0;
         for (int j = ndims - 1; j >= 0; j--) {
             int idx = reduce % out_shape[j];
-            int in_span = out_shape[j]-padding[2*j]-padding[2*j+1];
-            int in_pos = positive_modulo(idx-padding[2*j],2*(in_span-!periodic[j]));
 
-            if(periodic[j]) {
-                flat += strides[j]*((in_pos+in_span)%in_span);
+            int in_span = out_shape[j]-padding[2*j]-padding[2*j+1];
+            int in_pos = idx-padding[2*j];
+
+            if(periodic[j]==1) {
+                flat += strides[j] * positive_modulo(in_pos, in_span);
+            } else if(periodic[j]==-1) {
+                int reflect = positive_modulo(in_pos, 2*(in_span-1));
+                flat += strides[j] * (reflect<in_span?reflect:2*(in_span-1)-reflect); 
             } else {
-                flat += strides[j] * (in_pos<in_span?in_pos:2*(in_span-1)-in_pos); 
+                flat += strides[j] * fminf(fmaxf(in_pos, 0), in_span-1);
             }
             
             reduce /= out_shape[j];
@@ -92,13 +96,17 @@ __global__ void padding_gradient_kernel_gpu(int N, int ndims, const int *grad_sh
         int flat = 0;
         for (int j = ndims - 1; j >= 0; j--) {
             int idx = reduce % grad_shape[j];
-            int in_span = grad_shape[j]-padding[2*j]-padding[2*j+1];
-            int in_pos = positive_modulo(idx-padding[2*j],2*(in_span-!periodic[j]));
+            
+			int in_span = grad_shape[j]-padding[2*j]-padding[2*j+1];
+            int in_pos = idx-padding[2*j];
 
-            if(periodic[j]) {
-                flat += strides[j]*((in_pos+in_span)%in_span);
+            if(periodic[j]==1) {
+                flat += strides[j] * positive_modulo(in_pos, in_span);
+            } else if(periodic[j]==-1) {
+                int reflect = positive_modulo(in_pos, 2*(in_span-1));
+                flat += strides[j] * (reflect<in_span?reflect:2*(in_span-1)-reflect); 
             } else {
-                flat += strides[j] * (in_pos<in_span?in_pos:2*(in_span-1)-in_pos);
+                flat += strides[j] * fminf(fmaxf(in_pos, 0), in_span-1);
             }
             
             reduce /= grad_shape[j];
