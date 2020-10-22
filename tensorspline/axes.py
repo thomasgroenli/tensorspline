@@ -63,7 +63,7 @@ def transform_axis(x, axis):
         k = tf.constant(k, x.dtype)
         idx = tf.reshape(tf.searchsorted(k[None],tf.reshape(x,[-1])),x.shape)
         if not axis.period:
-            idx = tf.clip_by_value(idx,0,len(k)-1)
+            idx = tf.clip_by_value(idx,1,len(k)-1)
 
         a,b = tf.gather(k,idx-1), tf.gather(k,idx)
         return ((x-a)/(b-a)+(tf.cast(idx,x.dtype)-1)-bool(axis.period))/(len(k)-1-bool(axis.period))
