@@ -19,7 +19,23 @@ REGISTER_OP("SplineGrid")
 .Attr("periodic: list(int) = []")
 .Attr("fill_value: float = 0")
 .Attr("debug: bool = false")
-.Output("interpolation: float32");
+.Output("interpolation: float32")
+.SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+::tensorflow::shape_inference::ShapeHandle positions = c->input(0);
+::tensorflow::shape_inference::ShapeHandle coefficients = c->input(1);
+
+ std::vector<::tensorflow::shape_inference::DimensionHandle> out_shape;
+
+  int rank = c->Rank(positions);
+  for(int i = 0; i<rank-1; i++) {
+	out_shape.push_back(c->Dim(positions, i));
+  }
+  out_shape.push_back(c->Dim(coefficients,c->Rank(coefficients)-1));
+
+  c->set_output(0, c->MakeShape(out_shape));
+  return Status::OK();
+});
+
 
 REGISTER_OP("SplineMapping")
 .Input("positions: float32")
