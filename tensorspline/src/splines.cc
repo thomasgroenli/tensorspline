@@ -192,11 +192,11 @@ public:
 		grid.fill_value = fill_value;
 		int n_neigh = grid.neighbors();
 
-		SplineGridFunctor<Device>()(context,
+		OP_REQUIRES_OK(context,SplineGridFunctor<Device>()(context,
 			grid, N,
 			positions_flat.data(),
 			coefficients_flat.data(),
-			interpolation_flat.data());
+			interpolation_flat.data()));
 	}
 
 };
@@ -265,12 +265,12 @@ public:
 		grid.fill_value = fill_value;
 		int n_neigh = grid.neighbors();
 
-		SplineMappingFunctor<Device>()(context,
+		OP_REQUIRES_OK(context, SplineMappingFunctor<Device>()(context,
 			grid, N,
 			positions_flat.data(),
 			values_flat.data(),
 			weights_flat.data(),
-			grid_flat.data());
+			grid_flat.data()));
 	}
 
 };
@@ -338,12 +338,12 @@ public:
 		auto indices_flat = indices->flat<int>();
 		auto values_flat = values->flat<float>();
 
-		SplineGridCoefficientGradientFunctor<Device>()(context,
+		OP_REQUIRES_OK(context, SplineGridCoefficientGradientFunctor<Device>()(context,
 			grid, N,
 			positions_flat.data(),
 			grad_flat.data(),
 			indices_flat.data(),
-			values_flat.data());
+			values_flat.data()));
 
 	}
 
@@ -409,12 +409,12 @@ public:
 
 		auto result_flat = result->flat<float>();
 
-		SplineGridPositionGradientFunctor<Device>()(context,
+		OP_REQUIRES_OK(context, SplineGridPositionGradientFunctor<Device>()(context,
 			grid, N,
 			positions_flat.data(),
 			coefficients_flat.data(),
 			grad_flat.data(),
-			result_flat.data());
+			result_flat.data()));
 
 	}
 

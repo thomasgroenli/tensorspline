@@ -1,7 +1,7 @@
 #include "splines.h"
 
 
-void padding_kernel_cpu(int start, int end, int ndims, int *out_shape, int *strides, int *padding, int *periodic, const float *tensor, float *padded) {
+Status padding_kernel_cpu(int start, int end, int ndims, int *out_shape, int *strides, int *padding, int *periodic, const float *tensor, float *padded) {
     for (int i = start; i < end; ++i) {
 		int reduce = i;
         int flat = 0;
@@ -23,13 +23,14 @@ void padding_kernel_cpu(int start, int end, int ndims, int *out_shape, int *stri
             reduce /= out_shape[j];
         }
         padded[i] = tensor[flat];
-    } 
+    }
+    return Status::OK();
 }
 
 
 template<typename T>
 struct PaddingFunctor<CPU, T> {
-	void operator()(OpKernelContext *context,  std::vector<int> out_shape, std::vector<int> padding, std::vector<int> periodic, const float *tensor, float *padded) {
+	Status operator()(OpKernelContext *context,  std::vector<int> out_shape, std::vector<int> padding, std::vector<int> periodic, const float *tensor, float *padded) {
 		int ndims = out_shape.size();
         
         int N = 1;
@@ -50,13 +51,14 @@ struct PaddingFunctor<CPU, T> {
 #else
         padding_kernel_cpu(0, N, out_shape.size(), out_shape.data(), strides.data(), padding.data(), periodic.data(), tensor, padded);
 #endif
+        return Status::OK();
     }
 };
 
 template struct PaddingFunctor<CPU, float>;
 
 
-void padding_gradient_kernel_cpu(int start, int end, int ndims, int *grad_shape, int *strides, int *padding, int *periodic, const float *grad, float *out, lock *locks) {    
+Status padding_gradient_kernel_cpu(int start, int end, int ndims, int *grad_shape, int *strides, int *padding, int *periodic, const float *grad, float *out, lock *locks) {    
     bool lock_var = false;
     for (int i = start; i < end; ++i) {
 		int reduce = i;
@@ -81,12 +83,13 @@ void padding_gradient_kernel_cpu(int start, int end, int ndims, int *grad_shape,
         while(!locks[flat].compare_exchange_strong(lock_var, true)) {lock_var=false;}
         out[flat] += grad[i];
         locks[flat].store(false);
-    } 
+    }
+    return Status::OK(); 
 }
 
 template<typename T>
 struct PaddingGradientFunctor<CPU, T> {
-	void operator()(OpKernelContext *context,  std::vector<int> t_shape, std::vector<int> g_shape, std::vector<int> padding, std::vector<int> periodic, const float *grad, float *out) {
+	Status operator()(OpKernelContext *context,  std::vector<int> t_shape, std::vector<int> g_shape, std::vector<int> padding, std::vector<int> periodic, const float *grad, float *out) {
 		int ndims = t_shape.size();
         
         int N = 1;
@@ -122,6 +125,8 @@ struct PaddingGradientFunctor<CPU, T> {
 #endif
 
         delete[] locks;
+
+        return Status::OK();
     }
 };
 

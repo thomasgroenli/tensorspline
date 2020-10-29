@@ -1,7 +1,7 @@
 #include "splines.h"
 
 
-void spline_mapping_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *values, const float *weights, float *grid, float *density, lock *locks) {
+Status spline_mapping_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *values, const float *weights, float *grid, float *density, lock *locks) {
 int *idx = new int[ndims];
 	float *shift = new float[ndims];
 	int max_order = 0;
@@ -61,13 +61,15 @@ int *idx = new int[ndims];
 	delete[] idx;
 	delete[] shift;
 	delete[] kernel_tmp;
+
+	return Status::OK();
 }
 
 
 
 template<typename T>
 struct SplineMappingFunctor<CPU, T> {
-	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *values, const float *weights, float *output_grid) {
+	Status operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *values, const float *weights, float *output_grid) {
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
 		int channels = grid.channels;
@@ -111,6 +113,8 @@ struct SplineMappingFunctor<CPU, T> {
 
         delete[] locks;
         delete[] density;
+
+		return Status::OK();
 	}
 };
 

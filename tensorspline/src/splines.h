@@ -21,6 +21,7 @@
 #endif
 
 
+
 using namespace tensorflow;
 #define DEFAULT_ORDER 3
 
@@ -109,36 +110,36 @@ float kernel_cpu(float x, int p, int dx, float *tmp);
 
 template<::DeviceType Device, typename T = float>
 struct PaddingFunctor {
-	void operator()(OpKernelContext *, std::vector<int>, std::vector<int>, std::vector<int>, const float *, float *);
+	Status operator()(OpKernelContext *, std::vector<int>, std::vector<int>, std::vector<int>, const float *, float *);
 };
 template<::DeviceType Device, typename T = float>
 struct PaddingGradientFunctor {
-	void operator()(OpKernelContext *, std::vector<int>, std::vector<int>, std::vector<int>, std::vector<int>, const float *, float *);
+	Status operator()(OpKernelContext *, std::vector<int>, std::vector<int>, std::vector<int>, std::vector<int>, const float *, float *);
 };
 
 template<::DeviceType Device, typename T = float>
 struct BSplineFunctor {
-	void operator()(OpKernelContext *, int, int, int, const float *, float *);
+	Status operator()(OpKernelContext *, int, int, int, const float *, float *);
 };
 
 template<::DeviceType Device, typename T = float>
 struct SplineGridFunctor {
-	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, float *);
+	Status operator()(OpKernelContext *, const Grid &, int, const float *, const float *, float *);
 };
 
 template<::DeviceType Device, typename T = float>
 struct SplineGridCoefficientGradientFunctor {
-	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, int *, float *);
+	Status operator()(OpKernelContext *, const Grid &, int, const float *, const float *, int *, float *);
 };
 
 template<::DeviceType Device, typename T = float>
 struct SplineGridPositionGradientFunctor {
-	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
+	Status operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
 };
 
 template<::DeviceType Device, typename T = float>
 struct SplineMappingFunctor {
-	void operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
+	Status operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
 };
 
 inline int positive_modulo(int i, int n) {

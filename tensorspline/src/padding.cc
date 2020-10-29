@@ -44,12 +44,12 @@ public:
         auto tensor_flat = tensor.flat<float>();
 		auto padded_flat = padded->flat<float>();
 
-        PaddingFunctor<Device>()(context,
+        OP_REQUIRES_OK(context, PaddingFunctor<Device>()(context,
             out_shape,
 			padding,
 			periodic,
 			tensor_flat.data(),
-			padded_flat.data());
+			padded_flat.data()));
 
 	}
 
@@ -91,13 +91,13 @@ public:
 		auto grad_flat = grad.flat<float>();
 		auto out_flat = out->flat<float>();
 
-		PaddingGradientFunctor<Device>()(context,
+		OP_REQUIRES_OK(context, PaddingGradientFunctor<Device>()(context,
             t_shape,
 			g_shape,
 			padding,
 			periodic,
 			grad_flat.data(),
-			out_flat.data());
+			out_flat.data()));
 	}
 };
 

@@ -20,16 +20,17 @@ float kernel_cpu(float x, int p, int dx, float *tmp) {
 }
 
 
-void bspline_kernel_cpu(int start, int end, int order, int dx, const float *x, float *bsx) {
+Status bspline_kernel_cpu(int start, int end, int order, int dx, const float *x, float *bsx) {
 	float *kernel_tmp = new float[order + 1];
 	for (int i = start; i < end; ++i) {
 		bsx[i] = kernel_cpu(x[i], order, dx, kernel_tmp);
 	}
+	return Status::OK();
 }
 
 template<typename T>
 struct BSplineFunctor<CPU, T> {
-	void operator()(OpKernelContext *context,  int N, int order, int dx, const float *x, float *bsx) {
+	Status operator()(OpKernelContext *context,  int N, int order, int dx, const float *x, float *bsx) {
 
 #ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
@@ -39,12 +40,13 @@ struct BSplineFunctor<CPU, T> {
 #else
 		bspline_kernel_cpu(0, N, order, dx, x, bsx);
 #endif
+	return Status::OK();
 	}
 };
 
 template struct BSplineFunctor<CPU, float>;
 
-void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *coefficients, float *out) {
+Status spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, float fill_value, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *coefficients, float *out) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
 	int max_order = 0;
@@ -99,11 +101,13 @@ void spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int chan
 	delete[] idx;
 	delete[] shift;
 	delete[] kernel_tmp;
+
+	return Status::OK();
 }
 
 template<typename T>
 struct SplineGridFunctor<CPU, T> {
-	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, float *out) {
+	Status operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, float *out) {
 
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
@@ -123,12 +127,14 @@ struct SplineGridFunctor<CPU, T> {
 #else
 		spline_grid_kernel_cpu(0, N, ndims, n_neigh, channels, fill_value, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, coefficients, out);
 #endif
+
+		return Status::OK();
 	}
 };
 
 template struct SplineGridFunctor<CPU, float>;
 
-void spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *grad, int *indices, float *values) {
+Status spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *grad, int *indices, float *values) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
 
@@ -188,11 +194,13 @@ void spline_grid_coefficient_gradient_kernel_cpu(int start, int end, int ndims, 
 	delete[] idx;
 	delete[] shift;
 	delete[] kernel_tmp;
+
+	return Status::OK();
 }
 
 template<typename T>
 struct SplineGridCoefficientGradientFunctor<CPU, T> {
-	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float* grad, int *indices, float *values) {
+	Status operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float* grad, int *indices, float *values) {
 
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
@@ -211,13 +219,14 @@ struct SplineGridCoefficientGradientFunctor<CPU, T> {
 #else
 		spline_grid_coefficient_gradient_kernel_cpu(0, N, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, grad, indices, values);
 #endif
+		return Status::OK();
 	}
 };
 
 
 template struct SplineGridCoefficientGradientFunctor<CPU, float>;
 
-void spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *coefficients, const float *grad, float *result) {
+Status spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *coefficients, const float *grad, float *result) {
 	int *idx = new int[ndims];
 	float *shift = new float[ndims];
 
@@ -295,11 +304,13 @@ void spline_grid_position_gradient_kernel_cpu(int start, int end, int ndims, int
 	delete[] Wijs;
 	delete[] dWijs;
 	delete[] directional_diff;
+
+	return Status::OK();
 }
 
 template<typename T>
 struct SplineGridPositionGradientFunctor<CPU, T> {
-	void operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, const float* grad, float *result) {
+	Status operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *coefficients, const float* grad, float *result) {
 
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
@@ -318,7 +329,7 @@ struct SplineGridPositionGradientFunctor<CPU, T> {
 #else
 		spline_grid_position_gradient_kernel_cpu(0, N, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, coefficients, grad, result);
 #endif
-
+		return Status::OK();
 	}
 };
 
