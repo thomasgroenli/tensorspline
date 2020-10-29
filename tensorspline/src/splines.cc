@@ -20,19 +20,38 @@ REGISTER_OP("SplineGrid")
 .Attr("fill_value: float = 0")
 .Attr("debug: bool = false")
 .Output("interpolation: float32")
-.SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
-::tensorflow::shape_inference::ShapeHandle positions = c->input(0);
-::tensorflow::shape_inference::ShapeHandle coefficients = c->input(1);
+.SetShapeFn([](shape_inference::InferenceContext* c) {
 
- std::vector<::tensorflow::shape_inference::DimensionHandle> out_shape;
+ shape_inference::ShapeHandle positions = c->input(0);
+ shape_inference::ShapeHandle coefficients = c->input(1);
 
-  int rank = c->Rank(positions);
-  for(int i = 0; i<rank-1; i++) {
-	out_shape.push_back(c->Dim(positions, i));
+ std::vector<shape_inference::DimensionHandle> out_shape;
+
+
+  int pos_channels = c->Value(c->Dim(positions,-1));
+  int coeff_channels = c->Value(c->Dim(coefficients,-1));
+  
+  
+  int pos_rank = c->Rank(positions);
+  int coeff_rank = c->Rank(coefficients);
+
+  if(coeff_rank != c->kUnknownRank && pos_channels != c->kUnknownDim) {
+	  if(coeff_rank-1 != pos_channels) {
+		   return errors::InvalidArgument("Number of components of position tensor must agree with coefficients rank.");
+	  }
   }
-  out_shape.push_back(c->Dim(coefficients,c->Rank(coefficients)-1));
+ 
+  if (pos_rank != c->kUnknownRank) {
+	for(int i = 0; i<pos_rank-1; i++) {
+		out_shape.push_back(c->Dim(positions, i));
+	}
+  } else {
+	  out_shape.push_back(c->UnknownDim());
+  }
+  out_shape.push_back(c->MakeDim(coeff_channels));
 
   c->set_output(0, c->MakeShape(out_shape));
+
   return Status::OK();
 });
 
@@ -87,7 +106,6 @@ public:
 		const Tensor &x = context->input(0);
 
 		TensorShape shape = x.shape();
-
 
 		Tensor *bsx = NULL;
 		OP_REQUIRES_OK(context, context->allocate_output(0, shape,
@@ -174,19 +192,11 @@ public:
 		grid.fill_value = fill_value;
 		int n_neigh = grid.neighbors();
 
-		OP_REQUIRES(context, positions.dim_size(positions.dims() - 1) == coefficients.dims() - 1,
-			errors::InvalidArgument("Number of components of position tensor must agree with coefficients rank"));
-		auto start = std::chrono::high_resolution_clock::now();
 		SplineGridFunctor<Device>()(context,
 			grid, N,
 			positions_flat.data(),
 			coefficients_flat.data(),
 			interpolation_flat.data());
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		if (debug) {
-			std::cout << "Interpolation performance: " << N * n_neigh*NCHAN / elapsed.count() << "C/s" << std::endl;
-		}
 	}
 
 };
@@ -255,19 +265,12 @@ public:
 		grid.fill_value = fill_value;
 		int n_neigh = grid.neighbors();
 
-		auto start = std::chrono::high_resolution_clock::now();
 		SplineMappingFunctor<Device>()(context,
 			grid, N,
 			positions_flat.data(),
 			values_flat.data(),
 			weights_flat.data(),
 			grid_flat.data());
-		
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		if (debug) {
-			std::cout << "Interpolation performance: " << N * n_neigh*NCHAN / elapsed.count() << "C/s" << std::endl;
-		}
 	}
 
 };
@@ -334,7 +337,7 @@ public:
 
 		auto indices_flat = indices->flat<int>();
 		auto values_flat = values->flat<float>();
-		auto start = std::chrono::high_resolution_clock::now();
+
 		SplineGridCoefficientGradientFunctor<Device>()(context,
 			grid, N,
 			positions_flat.data(),
@@ -342,11 +345,6 @@ public:
 			indices_flat.data(),
 			values_flat.data());
 
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		if (debug) {
-			std::cout << "Gradient performance: " << N * n_neigh*NCHAN / elapsed.count() << "C/s" << std::endl;
-		}
 	}
 
 };
@@ -410,7 +408,7 @@ public:
 
 
 		auto result_flat = result->flat<float>();
-		auto start = std::chrono::high_resolution_clock::now();
+
 		SplineGridPositionGradientFunctor<Device>()(context,
 			grid, N,
 			positions_flat.data(),
@@ -418,11 +416,6 @@ public:
 			grad_flat.data(),
 			result_flat.data());
 
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		if (debug) {
-			std::cout << "Gradient performance: " << N * n_neigh*NCHAN / elapsed.count() << "C/s" << std::endl;
-		}
 	}
 
 };
