@@ -55,10 +55,8 @@ def transform_axis(x, axis):
         k = list(axis.x)
         
         if axis.period:
-            k = [ki%axis.period for ki in k]
+            x = ((x-k[0]) % axis.period)+k[0]
             k = [k[-1]-axis.period]+k+[k[0]+axis.period]
-
-            x = x % axis.period
 
         k = tf.constant(k, x.dtype)
         idx = tf.reshape(tf.searchsorted(k[None],tf.reshape(x,[-1])),x.shape)
