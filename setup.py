@@ -24,8 +24,11 @@ def create_extension(distribution, cuda_path=None):
             distutils.dir_util.copy_tree(inc_path, 'build/include')
             try:
                   os.rename('build/include/tensorflow_core/', 'build/include/tensorflow')
+
             except:
                   pass
+
+            pathlib.Path('build/include/unistd.h').touch()            
             include_dirs = ["build/include"]
 
             distutils.file_util.copy_file(
@@ -37,8 +40,8 @@ def create_extension(distribution, cuda_path=None):
       
             macros = [("NOMINMAX",None),
                       ("COMPILER_MSVC",None),
-                      ("USE_MULTITHREAD",None)
-            ]
+                      ("USE_MULTITHREAD",None),
+                      ]
       
             sources = ['tensorspline/src/splines.cc', 
             'tensorspline/src/padding.cc', 'tensorspline/src/padding_cpu.cc',

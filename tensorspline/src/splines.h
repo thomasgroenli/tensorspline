@@ -12,6 +12,12 @@
 #include <chrono>
 #include <stdio.h>
 
+
+#define EXPAND(x) x
+#define TF_NEW_ID_FOR_INIT_2(m, c, ...) EXPAND(m(c, __VA_ARGS__))
+#define TF_EXTRACT_KERNEL_NAME_IMPL(m, ...) EXPAND(m(__VA_ARGS__))
+
+
 #ifdef USE_GPU
 	#define EIGEN_USE_GPU
 	#include <cuda.h>
