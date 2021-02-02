@@ -85,7 +85,7 @@ def create_extension(distribution, cuda_path=None):
              'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = ['-std=c++11']
-            extra_link_args = ['-stdlib=libc++']
+            extra_link_args = ['-stdlib=libc++'] if system=='Darwin' else []
       
             if cuda_path is not None and tf.test.is_built_with_cuda():
                   macros.append(("USE_GPU",None))
