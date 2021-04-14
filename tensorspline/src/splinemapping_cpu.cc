@@ -1,7 +1,7 @@
 #include "splines.h"
 
 
-Status spline_mapping_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *values, const float *weights, float *grid, float *density, lock *locks) {
+Status spline_mapping_kernel_cpu(int start, int end, int ndims, int n_neigh, int channels, const int *grid_dim, const int *strides, const int *K, const int *dx, const int *periodic, const float *positions, const float *values, float *grid, lock *locks) {
 int *idx = new int[ndims];
 	float *shift = new float[ndims];
 	int max_order = 0;
@@ -49,8 +49,7 @@ int *idx = new int[ndims];
                 while(!locks[flat].compare_exchange_strong(lock_var, true)) {lock_var=false;}
 
                 for (int k = 0; k < channels; k++) {
-                    grid[flat*channels + k] += weights[i*channels + k] * Wij * values[channels*i + k];
-					density[flat*channels + k] += weights[i*channels + k] * Wij;
+                    grid[flat*channels + k] += Wij * values[channels*i + k];
                 }
 
                 locks[flat].store(false);
@@ -69,7 +68,7 @@ int *idx = new int[ndims];
 
 template<typename T>
 struct SplineMappingFunctor<CPU, T> {
-	Status operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *values, const float *weights, float *output_grid) {
+	Status operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *values, float *output_grid) {
 		int ndims = grid.ndims();
 		int n_neigh = grid.neighbors();
 		int channels = grid.channels;
@@ -82,37 +81,24 @@ struct SplineMappingFunctor<CPU, T> {
 		std::vector<int> periodic = grid.periodic;
 
         lock *locks = new lock[grid.num_points()];
-        float *density = new float[channels*grid.num_points()];
         for(int i=0; i<grid.num_points(); i++) {
             locks[i] = false;
             
 			for(int j=0; j<channels; j++) {
 				output_grid[i*channels+j] = 0;
-				density[i*channels + j] = 0;
 			}
         }
 
 #ifdef USE_MULTITHREAD
 		auto pool = context->device()->tensorflow_cpu_worker_threads()->workers;
 		Shard(pool->NumThreads(), pool, N, 1024, [&](int start, int end) {
-			spline_mapping_kernel_cpu(start, end, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, values, weights, output_grid, density, locks);
+			spline_mapping_kernel_cpu(start, end, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, values, output_grid, locks);
 		});
 #else
-		spline_mapping_kernel_cpu(0, N, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, values, weights, output_grid, density, locks);
+		spline_mapping_kernel_cpu(0, N, ndims, n_neigh, channels, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, values, output_grid, locks);
 #endif
 
-        for(int i=0; i<grid.num_points(); i++) {
-			for(int j=0; j<channels; j++) {
-				if(density[channels*i+j]) {
-					output_grid[channels*i+j] /= density[channels*i+j];
-				} else {
-					output_grid[channels*i+j] = fill_value;
-				}
-			}
-        }
-
         delete[] locks;
-        delete[] density;
 
 		return Status::OK();
 	}

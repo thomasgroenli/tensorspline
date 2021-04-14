@@ -134,18 +134,8 @@ struct SplineGridFunctor {
 };
 
 template<::DeviceType Device, typename T = float>
-struct SplineGridCoefficientGradientFunctor {
-	Status operator()(OpKernelContext *, const Grid &, int, const float *, const float *, int *, float *);
-};
-
-template<::DeviceType Device, typename T = float>
-struct SplineGridPositionGradientFunctor {
-	Status operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
-};
-
-template<::DeviceType Device, typename T = float>
 struct SplineMappingFunctor {
-	Status operator()(OpKernelContext *, const Grid &, int, const float *, const float *, const float *, float *);
+	Status operator()(OpKernelContext *, const Grid &, int, const float *, const float *, float *);
 };
 
 inline int positive_modulo(int i, int n) {

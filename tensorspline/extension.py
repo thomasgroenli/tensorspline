@@ -25,9 +25,8 @@ try:
     def _(op, grad):
         pos = op.inputs[0]
         coeff = op.inputs[1]
-        indices,values = spline_module.spline_grid_coefficient_gradient(pos,grad,coeff.shape,order=op.get_attr('order'),dx=op.get_attr('dx'),periodic=op.get_attr('periodic'),debug=op.get_attr('debug'))
-        pos_grad = spline_module.spline_grid_position_gradient(pos, coeff, grad,order=op.get_attr('order'),dx=op.get_attr('dx'),periodic=op.get_attr('periodic'),debug=op.get_attr('debug'))
-        return [pos_grad,tf.scatter_nd(indices, values, tf.shape(coeff))]
+        gradient = spline_mapping(pos,grad,coeff.shape,order=op.get_attr('order'),dx=op.get_attr('dx'),periodic=op.get_attr('periodic'),debug=op.get_attr('debug'))
+        return [None,gradient]
         
 except KeyError:
     pass

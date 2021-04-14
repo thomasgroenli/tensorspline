@@ -42,19 +42,7 @@ __global__ void zero(int N, int channels, float *grid) {
     }
 }
 
-__global__ void normalize(int N, int channels, float fill_value, float *grid, float *density) {
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
-        for(int j=0; j<channels; j++) {
-			if(density[i*channels+j]) {
-            	grid[i*channels+j] /= density[i*channels+j];
-			} else {
-				grid[i*channels+j] = fill_value;
-			}
-        }
-    }
-}
-
-__global__ void spline_mapping_kernel_gpu(int N, int ndims, int n_neigh, int channels, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const int *periodic_ptr, const float *positions, const float *values, const float *weights, float *grid, float *density) {
+__global__ void spline_mapping_kernel_gpu(int N, int ndims, int n_neigh, int channels, const int *grid_dim_ptr, const int *strides_ptr, const int *K_ptr, const int *dx_ptr, const int *periodic_ptr, const float *positions, const float *values, float *grid) {
 
 	extern __shared__ int shared_info[];
 	int *grid_dim = shared_info;
@@ -124,8 +112,7 @@ __global__ void spline_mapping_kernel_gpu(int N, int ndims, int n_neigh, int cha
 			}
 			// Accumulate contribution in each channel
 			for (int k = 0; k < channels; k++) {
-                atomicAdd(&grid[flat*channels + k], weights[channels*i + k] * Wij * values[channels*i + k]);
-				atomicAdd(&density[flat*channels + k], weights[channels*i + k] * Wij);
+                atomicAdd(&grid[flat*channels + k], Wij * values[channels*i + k]);
             }
 		}
 	}
@@ -139,7 +126,6 @@ __global__ void spline_mapping_kernel_gpu(int N, int ndims, int n_neigh, int cha
 static CUmodule module;
 static CUfunction kernel;
 static CUfunction zero;
-static CUfunction normalize;
 
 static bool compiled_map = false;
 
@@ -173,7 +159,6 @@ Status compile_map() {
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuModuleLoadDataEx(&module, ptx, 0, 0, 0)));
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuModuleGetFunction(&kernel, module, "spline_mapping_kernel_gpu")));
     TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuModuleGetFunction(&zero, module, "zero")));
-    TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuModuleGetFunction(&normalize, module, "normalize")));
 
 	compiled_map = true;
 
@@ -183,7 +168,7 @@ Status compile_map() {
 
 template<typename T>
 struct SplineMappingFunctor<GPU, T> {
-	Status operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *values, const float *weights, float *output_grid) {
+	Status operator()(OpKernelContext *context, const Grid &grid, int N, const float *positions, const float *values, float *output_grid) {
 		TF_RETURN_IF_ERROR(compile_map());
         
         int ndims = grid.ndims();
@@ -214,25 +199,13 @@ struct SplineMappingFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
 
 
-        float *density;
-        TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&density, num_points * channels * sizeof(float))));
-
 
         void *zero_args[] = {
             &num_points,
             &channels,
-            nullptr
+            &output_grid
         };
 
-        zero_args[2] = &output_grid;
-        TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuLaunchKernel(zero,
-			BLOCKS, 1, 1,
-			THREADS, 1, 1,
-			0, NULL,
-			zero_args,
-			0)));
-
-        zero_args[2] = &density;
         TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuLaunchKernel(zero,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
@@ -259,9 +232,8 @@ struct SplineMappingFunctor<GPU, T> {
 			&periodic_ptr, 
 			&positions, 
 			&values,
-            &weights, 
-			&output_grid,
-            &density};
+			&output_grid
+		};
 
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuLaunchKernel(kernel,
 			BLOCKS, 1, 1,
@@ -270,20 +242,7 @@ struct SplineMappingFunctor<GPU, T> {
 			args,
 			0)));
 
-        void *normalize_args[] = {
-            &num_points, 
-            &channels, 
-			&fill_value,
-            &output_grid, 
-            &density
-        };
-
-        TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuLaunchKernel(normalize,
-			BLOCKS, 1, 1,
-			THREADS, 1, 1,
-			0, NULL,
-			normalize_args,
-			0)));
+        
 
 		// Free resources
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(grid_dim_ptr)));
@@ -291,7 +250,6 @@ struct SplineMappingFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(K_ptr)));
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(dx_ptr)));
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(periodic_ptr)));
-        TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(density)));
 
 		return Status::OK();
 	}
