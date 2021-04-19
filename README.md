@@ -47,15 +47,13 @@ Returns
 
 ### spline_mapping
 
-- ``mapping = spline_mapping(positions, values, weights, grid_shape, order=[], dx=[], periodic=[], fill_value=0)``
+- ``mapping = spline_mapping(positions, values, grid_shape, order=[], dx=[], periodic=[], fill_value=0)``
 
 Required
 
 - ``positions``: Locations of data points, Tensor or Tensor-like object with shape ``[SHAPE, d]``
 
 - ``values``: Data point values, Tensor or Tensor-like object with shape ``[SHAPE, channels]``
-
-- ``weights``: Data point weights, Tensor or Tensor-like object with shape ``[SHAPE, channels]``
 
 - ``grid_shape``: Output grid size, list of ints length ``d``
 
