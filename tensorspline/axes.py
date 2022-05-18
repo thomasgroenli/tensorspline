@@ -59,7 +59,7 @@ def transform_axis(x, axis):
             k = [k[-1]-axis.period]+k+[k[0]+axis.period]
 
         k = tf.constant(k, x.dtype)
-        idx = tf.reshape(tf.searchsorted(k[None],tf.reshape(x,[-1])),x.shape)
+        idx = tf.reshape(tf.searchsorted(k[None],tf.reshape(x,[-1])),tf.shape(x))
         if not axis.period:
             idx = tf.clip_by_value(idx,1,len(k)-1)
 
