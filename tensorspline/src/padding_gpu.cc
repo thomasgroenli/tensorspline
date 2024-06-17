@@ -132,7 +132,7 @@ static bool compiled_pad = false;
 
 Status compile_pad() {
 	if (compiled_pad) {
-		return Status::OK();
+		return absl::OkStatus();
 	}
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuInit(0)));
 	nvrtcProgram prog;
@@ -184,17 +184,17 @@ struct PaddingFunctor<GPU, T> {
 		}
 
 
-        int *out_shape_ptr, *strides_ptr, *padding_ptr, *periodic_ptr;
+        CUdeviceptr out_shape_ptr, strides_ptr, padding_ptr, periodic_ptr;
 
-        TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&out_shape_ptr, ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&strides_ptr, ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&padding_ptr, 2*ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&periodic_ptr, ndims * sizeof(int))));
+        TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&out_shape_ptr, ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&strides_ptr, ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&padding_ptr, 2*ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&periodic_ptr, ndims * sizeof(int))));
 
-        TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(out_shape_ptr, out_shape.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(padding_ptr, padding.data(), 2*ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
+        TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(out_shape_ptr, out_shape.data(), ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(strides_ptr, strides.data(), ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(padding_ptr, padding.data(), 2*ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(periodic_ptr, periodic.data(), ndims * sizeof(int))));
 
 
         int shared_size = 5 * ndims * sizeof(int);
@@ -217,10 +217,10 @@ struct PaddingFunctor<GPU, T> {
 			0)));
 
         // Free resources
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(out_shape_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(strides_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(padding_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(periodic_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(out_shape_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(strides_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(padding_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(periodic_ptr)));
 
 		return absl::OkStatus();
     }
@@ -252,17 +252,17 @@ struct PaddingGradientFunctor<GPU, T> {
 		}
 
 
-        int *grad_shape_ptr, *strides_ptr, *padding_ptr, *periodic_ptr;
+        CUdeviceptr grad_shape_ptr, strides_ptr, padding_ptr, periodic_ptr;
 
-        TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&grad_shape_ptr, ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&strides_ptr, ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&padding_ptr, 2*ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&periodic_ptr, ndims * sizeof(int))));
+        TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&grad_shape_ptr, ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&strides_ptr, ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&padding_ptr, 2*ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&periodic_ptr, ndims * sizeof(int))));
 
-        TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(grad_shape_ptr, g_shape.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(padding_ptr, padding.data(), 2*ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
+        TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(grad_shape_ptr, g_shape.data(), ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(strides_ptr, strides.data(), ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(padding_ptr, padding.data(), 2*ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(periodic_ptr, periodic.data(), ndims * sizeof(int))));
 
 
 
@@ -298,10 +298,10 @@ struct PaddingGradientFunctor<GPU, T> {
 			0)));
 
         // Free resources
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(grad_shape_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(strides_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(padding_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(periodic_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(grad_shape_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(strides_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(padding_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(periodic_ptr)));
 
 		return absl::OkStatus();
     }

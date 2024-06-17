@@ -8,14 +8,6 @@
 
 using namespace tensorflow;
 
-inline Status CudaSafeCall(cudaError err)
-{
-    if(err != cudaSuccess) {
-        return errors::Unknown(cudaGetErrorString(err));
-    }
-    return Status::OK();
-}
-
 
 inline Status CudaCheckDriverCall(CUresult result)
 {
@@ -24,7 +16,7 @@ inline Status CudaCheckDriverCall(CUresult result)
     if(result != CUDA_SUCCESS) {
         return errors::Unknown(error_string);
     }
-    return Status::OK();
+    return absl::OkStatus();
 }
 
 inline Status CudaCheckRTCCall(nvrtcResult result)
@@ -32,5 +24,5 @@ inline Status CudaCheckRTCCall(nvrtcResult result)
     if(result != NVRTC_SUCCESS) {
         return errors::Unknown(nvrtcGetErrorString(result));
     }
-    return Status::OK();
+    return absl::OkStatus();
 }

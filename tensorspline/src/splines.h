@@ -22,7 +22,6 @@
 	#define EIGEN_USE_GPU
 	#include <cuda.h>
 	#include <nvrtc.h>
-	#include <cuda_runtime.h>
 	#include "CudaErrorChecks.h"
 #endif
 

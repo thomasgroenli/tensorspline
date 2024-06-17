@@ -131,7 +131,7 @@ static bool compiled_map = false;
 
 Status compile_map() {
 	if (compiled_map) {
-		return Status::OK();
+		return absl::OkStatus();
 	}
 
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuInit(0)));
@@ -184,19 +184,19 @@ struct SplineMappingFunctor<GPU, T> {
 		std::vector<int> periodic = grid.periodic;
 
 
-        int *grid_dim_ptr, *strides_ptr, *K_ptr, *dx_ptr, *periodic_ptr;
+        CUdeviceptr grid_dim_ptr, strides_ptr, K_ptr, dx_ptr, periodic_ptr;
 
-        TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&grid_dim_ptr, ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&strides_ptr, ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&K_ptr, ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&dx_ptr, ndims * sizeof(int))));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMalloc(&periodic_ptr, ndims * sizeof(int))));
+        TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&grid_dim_ptr, ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&strides_ptr, ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&K_ptr, ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&dx_ptr, ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemAlloc(&periodic_ptr, ndims * sizeof(int))));
 
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(strides_ptr, strides.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(K_ptr, K.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(dx_ptr, dx.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaMemcpy(periodic_ptr, periodic.data(), ndims * sizeof(int), cudaMemcpyHostToDevice)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(grid_dim_ptr, grid_dim.data(), ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(strides_ptr, strides.data(), ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(K_ptr, K.data(), ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(dx_ptr, dx.data(), ndims * sizeof(int))));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemcpyHtoD(periodic_ptr, periodic.data(), ndims * sizeof(int))));
 
 
 
@@ -245,11 +245,11 @@ struct SplineMappingFunctor<GPU, T> {
         
 
 		// Free resources
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(grid_dim_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(strides_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(K_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(dx_ptr)));
-		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(periodic_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(grid_dim_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(strides_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(K_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(dx_ptr)));
+		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(periodic_ptr)));
 
 		return absl::OkStatus();
 	}
