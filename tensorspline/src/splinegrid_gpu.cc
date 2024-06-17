@@ -152,7 +152,7 @@ Status compile() {
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuModuleLoadDataEx(&module, ptx, 0, 0, 0)));
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuModuleGetFunction(&kernel, module, "spline_grid_kernel_gpu")));
 	compiled = true;
-	return Status::OK();
+	return absl::OkStatus();
 }
 
 
@@ -223,7 +223,7 @@ struct SplineGridFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(dx_ptr)));
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(periodic_ptr)));
 
-		return Status::OK();
+		return absl::OkStatus();
 	}
 
 };

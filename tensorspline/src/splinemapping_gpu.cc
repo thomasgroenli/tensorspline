@@ -162,7 +162,7 @@ Status compile_map() {
 
 	compiled_map = true;
 
-	return Status::OK();
+	return absl::OkStatus();
 }
 
 
@@ -251,7 +251,7 @@ struct SplineMappingFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(dx_ptr)));
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(periodic_ptr)));
 
-		return Status::OK();
+		return absl::OkStatus();
 	}
 };
 

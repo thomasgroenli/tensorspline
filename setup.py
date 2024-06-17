@@ -18,37 +18,22 @@ def create_extension(distribution, cuda_path=None):
 
       if system == 'Windows':
             inc_path = pathlib.Path(tf.sysconfig.get_include())
-            
-            import distutils
 
-            distutils.dir_util.copy_tree(inc_path, 'build/include')
-            try:
-                  os.rename('build/include/tensorflow_core/', 'build/include/tensorflow')
-
-            except:
-                  pass
-
-            pathlib.Path('build/include/unistd.h').touch()            
-            include_dirs = ["build/include"]
-
-            distutils.file_util.copy_file(
-                  pathlib.Path(tf.sysconfig.get_lib()) / 'python' / '_pywrap_tensorflow_internal.lib',
-                  'build/tensorflow.lib'
-            )
-            library_dirs = ['build']
-            libraries = ['tensorflow']
+            library_dirs = []
+            libraries = []
       
             macros = [("NOMINMAX",None),
                       ("COMPILER_MSVC",None),
                       ("USE_MULTITHREAD",None),
                       ]
-      
+
+            include_dirs = [inc_path]      
             sources = ['tensorspline/src/splines.cc', 
             'tensorspline/src/padding.cc', 'tensorspline/src/padding_cpu.cc',
              'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
-            extra_compile_args = []
-            extra_link_args = []
+            extra_compile_args = ["/std:c++17"]
+            extra_link_args = [str(pathlib.Path(tf.sysconfig.get_lib()) / 'python' / '_pywrap_tensorflow_internal.lib')]
       
             if cuda_path is not None and tf.test.is_built_with_cuda():
                   macros.append(("USE_GPU",None))
@@ -84,7 +69,7 @@ def create_extension(distribution, cuda_path=None):
             'tensorspline/src/padding.cc', 'tensorspline/src/padding_cpu.cc',
              'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
-            extra_compile_args = ['-std=c++11']
+            extra_compile_args = ['-std=c++17']
             extra_link_args = ['-stdlib=libc++'] if system=='Darwin' else []
       
             if cuda_path is not None and tf.test.is_built_with_cuda():

@@ -163,7 +163,7 @@ Status compile_pad() {
 	
 	compiled_pad = true;
 
-	return Status::OK();
+	return absl::OkStatus();
 }
 
 
@@ -222,7 +222,7 @@ struct PaddingFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(padding_ptr)));
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(periodic_ptr)));
 
-		return Status::OK();
+		return absl::OkStatus();
     }
 
 };
@@ -303,7 +303,7 @@ struct PaddingGradientFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(padding_ptr)));
 		TF_RETURN_IF_ERROR(CudaSafeCall(cudaFree(periodic_ptr)));
 
-		return Status::OK();
+		return absl::OkStatus();
     }
 
 };

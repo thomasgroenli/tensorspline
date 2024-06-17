@@ -7,7 +7,7 @@ REGISTER_OP("BSpline")
 .Output("bsx: float32")
 .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
   c->set_output(0,c->input(0));
-  return Status::OK();
+  return absl::OkStatus();
 });
 
 
@@ -52,14 +52,14 @@ REGISTER_OP("SplineGrid")
 
   c->set_output(0, c->MakeShape(out_shape));
 
-  return Status::OK();
+  return absl::OkStatus();
 });
 
 
 REGISTER_OP("SplineMapping")
 .Input("positions: float32")
+.Input("coefficients: float32")
 .Input("values: float32")
-.Attr("grid_shape: shape")
 .Attr("order: list(int) = []")
 .Attr("dx: list(int) = []")
 .Attr("periodic: list(int) = []")
@@ -182,7 +182,6 @@ public:
 template<::DeviceType Device>
 class SplineMappingOp : public OpKernel {
 private:
-	TensorShapeProto grid_shape;
 	std::vector<int> K;
 	std::vector<int> dx;
 	std::vector<int> periodic;
@@ -190,7 +189,6 @@ private:
 	bool debug;
 public:
 	explicit SplineMappingOp(OpKernelConstruction* context) : OpKernel(context) {
-		context->GetAttr("grid_shape", &grid_shape);
 		context->GetAttr("order", &K);
 		context->GetAttr("dx", &dx);
 		context->GetAttr("periodic", &periodic);
@@ -200,10 +198,11 @@ public:
 
 	void Compute(OpKernelContext* context) override {
 		const Tensor &positions = context->input(0);
-		const Tensor &values = context->input(1);
+		const Tensor &coefficients = context->input(1);
+		const Tensor &values = context->input(2);
 
-		TensorShape shape(grid_shape);
-		shape.AddDim(values.dim_size(values.dims()-1));
+		TensorShape shape = coefficients.shape();
+		shape.set_dim(shape.dims()-1, values.dim_size(values.dims()-1));
 
 
 		Tensor *output_grid = NULL;

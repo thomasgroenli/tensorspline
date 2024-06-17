@@ -25,7 +25,7 @@ try:
     def _(op, grad):
         pos = op.inputs[0]
         coeff = op.inputs[1]
-        gradient = spline_mapping(pos,grad,coeff.shape[:-1],order=op.get_attr('order'),dx=op.get_attr('dx'),periodic=op.get_attr('periodic'),debug=op.get_attr('debug'))
+        gradient = spline_mapping(pos,coeff,grad,order=op.get_attr('order'),dx=op.get_attr('dx'),periodic=op.get_attr('periodic'),debug=op.get_attr('debug'))
         return [None,gradient]
         
 except KeyError:
@@ -35,7 +35,7 @@ try:
     @ops.RegisterGradient("Padding")
     def _(op, grad):
         tensor = op.inputs[0]
-        pad_grad = spline_module.padding_gradient(grad,tensor_shape=tensor.shape,padding=op.get_attr('padding'),periodic=op.get_attr('periodic'))
+        pad_grad = spline_module.padding_gradient(grad,tensor,padding=op.get_attr('padding'),periodic=op.get_attr('periodic'))
         return [pad_grad]
         
 except KeyError:
