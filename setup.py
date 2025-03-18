@@ -10,7 +10,7 @@ import platform
 logging.basicConfig(level=logging.INFO)
 
 
-def create_extension(distribution, cuda_path=None):
+def create_extension(cuda_path=None):
       tf = __import__('tensorflow')
       
       system = platform.system()
@@ -38,44 +38,32 @@ def create_extension(distribution, cuda_path=None):
                   macros.append(("USE_GPU",None))
                   include_dirs.append(str(pathlib.Path(cuda_path) / 'include'))
                   library_dirs.append(str(pathlib.Path(cuda_path) / 'lib' / 'x64'))
-                  libraries.extend(['cuda','nvrtc'])
+                  libraries.extend(['nvrtc'])
                   sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc', 'tensorspline/src/padding_gpu.cc'])
 
       elif system in ['Darwin', 'Linux']:
             inc_path = pathlib.Path(tf.sysconfig.get_include())
 
-            import distutils
+            include_dirs = [inc_path]
 
-            distutils.dir_util.copy_tree(inc_path, 'build/include')
-            try:
-                  os.rename('build/include/tensorflow_core/', 'build/include/tensorflow')
-            except:
-                  pass
-            include_dirs = ["build/include"]
-
-            distutils.file_util.copy_file(
-                  pathlib.Path(tf.sysconfig.get_lib()) / 'python' / '_pywrap_tensorflow_internal.so',
-                  'build/libtensorflow.so'
-            )
-            library_dirs = ['build']
-            libraries = ['tensorflow']
-
-            macros = [("_GLIBCXX_USE_CXX11_ABI", "0"),
+            macros = [
                       ("USE_MULTITHREAD",None)
             ]
+            libraries = []
+            library_dirs = []
       
             sources = ['tensorspline/src/splines.cc', 
             'tensorspline/src/padding.cc', 'tensorspline/src/padding_cpu.cc',
              'tensorspline/src/splinegrid_cpu.cc', 'tensorspline/src/splinemapping_cpu.cc']
 
             extra_compile_args = ['-std=c++17']
-            extra_link_args = ['-stdlib=libc++'] if system=='Darwin' else []
-      
+            extra_link_args = ['-stdlib=libc++'] if system=='Darwin' else tf.sysconfig.get_link_flags()
+
             if cuda_path is not None:
                   macros.append(("USE_GPU",None))
                   include_dirs.append(str(pathlib.Path(cuda_path) / 'include'))
                   library_dirs.append(str(pathlib.Path(cuda_path) / 'lib64'))
-                  libraries.extend(['cuda','nvrtc'])
+                  libraries.extend(['nvrtc'])
                   sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc', 'tensorspline/src/padding_gpu.cc'])
 
       else:
@@ -123,7 +111,7 @@ class custom_build_ext(build_ext.build_ext):
             super().finalize_options()
 
       def run(self):
-            self.extensions = [create_extension(self.distribution, self.cuda)]
+            self.extensions = [create_extension(self.cuda)]
             super().run()
             
       def get_export_symbols(self,ext):
