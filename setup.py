@@ -38,7 +38,7 @@ def create_extension(cuda_path=None):
                   macros.append(("USE_GPU",None))
                   include_dirs.append(str(pathlib.Path(cuda_path) / 'include'))
                   library_dirs.append(str(pathlib.Path(cuda_path) / 'lib' / 'x64'))
-                  libraries.extend(['nvrtc'])
+                  libraries.extend(['cuda', 'nvrtc'])
                   sources.extend(['tensorspline/src/splinegrid_gpu.cc', 'tensorspline/src/splinemapping_gpu.cc', 'tensorspline/src/padding_gpu.cc'])
 
       elif system in ['Darwin', 'Linux']:
