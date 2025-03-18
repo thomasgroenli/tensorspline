@@ -132,7 +132,7 @@ static bool compiled_pad = false;
 
 Status compile_pad() {
 	if (compiled_pad) {
-		return absl::OkStatus();
+		return tensorflow::OkStatus();
 	}
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuInit(0)));
 	nvrtcProgram prog;
@@ -163,7 +163,7 @@ Status compile_pad() {
 	
 	compiled_pad = true;
 
-	return absl::OkStatus();
+	return tensorflow::OkStatus();
 }
 
 
@@ -222,7 +222,7 @@ struct PaddingFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(padding_ptr)));
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(periodic_ptr)));
 
-		return absl::OkStatus();
+		return tensorflow::OkStatus();
     }
 
 };
@@ -303,7 +303,7 @@ struct PaddingGradientFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(padding_ptr)));
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(periodic_ptr)));
 
-		return absl::OkStatus();
+		return tensorflow::OkStatus();
     }
 
 };

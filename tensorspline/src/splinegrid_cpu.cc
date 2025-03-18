@@ -25,7 +25,7 @@ Status bspline_kernel_cpu(int start, int end, int order, int dx, const float *x,
 	for (int i = start; i < end; ++i) {
 		bsx[i] = kernel_cpu(x[i], order, dx, kernel_tmp);
 	}
-	return absl::OkStatus();
+	return tensorflow::OkStatus();
 }
 
 template<typename T>
@@ -40,7 +40,7 @@ struct BSplineFunctor<CPU, T> {
 #else
 		bspline_kernel_cpu(0, N, order, dx, x, bsx);
 #endif
-	return absl::OkStatus();
+	return tensorflow::OkStatus();
 	}
 };
 
@@ -102,7 +102,7 @@ Status spline_grid_kernel_cpu(int start, int end, int ndims, int n_neigh, int ch
 	delete[] shift;
 	delete[] kernel_tmp;
 
-	return absl::OkStatus();
+	return tensorflow::OkStatus();
 }
 
 template<typename T>
@@ -128,7 +128,7 @@ struct SplineGridFunctor<CPU, T> {
 		spline_grid_kernel_cpu(0, N, ndims, n_neigh, channels, fill_value, grid_dim.data(), strides.data(), K.data(), dx.data(), periodic.data(), positions, coefficients, out);
 #endif
 
-		return absl::OkStatus();
+		return tensorflow::OkStatus();
 	}
 };
 

@@ -61,7 +61,7 @@ int *idx = new int[ndims];
 	delete[] shift;
 	delete[] kernel_tmp;
 
-	return absl::OkStatus();
+	return tensorflow::OkStatus();
 }
 
 
@@ -100,7 +100,7 @@ struct SplineMappingFunctor<CPU, T> {
 
         delete[] locks;
 
-		return absl::OkStatus();
+		return tensorflow::OkStatus();
 	}
 };
 

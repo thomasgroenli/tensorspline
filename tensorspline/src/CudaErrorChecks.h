@@ -16,7 +16,7 @@ inline Status CudaCheckDriverCall(CUresult result)
     if(result != CUDA_SUCCESS) {
         return errors::Unknown(error_string);
     }
-    return absl::OkStatus();
+    return tensorflow::OkStatus();
 }
 
 inline Status CudaCheckRTCCall(nvrtcResult result)
@@ -24,5 +24,5 @@ inline Status CudaCheckRTCCall(nvrtcResult result)
     if(result != NVRTC_SUCCESS) {
         return errors::Unknown(nvrtcGetErrorString(result));
     }
-    return absl::OkStatus();
+    return tensorflow::OkStatus();
 }

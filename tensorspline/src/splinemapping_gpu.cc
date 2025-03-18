@@ -131,7 +131,7 @@ static bool compiled_map = false;
 
 Status compile_map() {
 	if (compiled_map) {
-		return absl::OkStatus();
+		return tensorflow::OkStatus();
 	}
 
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuInit(0)));
@@ -162,7 +162,7 @@ Status compile_map() {
 
 	compiled_map = true;
 
-	return absl::OkStatus();
+	return tensorflow::OkStatus();
 }
 
 
@@ -251,7 +251,7 @@ struct SplineMappingFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(dx_ptr)));
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(periodic_ptr)));
 
-		return absl::OkStatus();
+		return tensorflow::OkStatus();
 	}
 };
 

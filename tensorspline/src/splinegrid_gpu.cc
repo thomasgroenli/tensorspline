@@ -124,7 +124,7 @@ static bool compiled = false;
 
 Status compile() {
 	if (compiled) {
-		return absl::OkStatus();
+		return tensorflow::OkStatus();
 	}
 	
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuInit(0)));
@@ -152,7 +152,7 @@ Status compile() {
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuModuleLoadDataEx(&module, ptx, 0, 0, 0)));
 	TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuModuleGetFunction(&kernel, module, "spline_grid_kernel_gpu")));
 	compiled = true;
-	return absl::OkStatus();
+	return tensorflow::OkStatus();
 }
 
 
@@ -223,7 +223,7 @@ struct SplineGridFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(dx_ptr)));
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuMemFree(periodic_ptr)));
 
-		return absl::OkStatus();
+		return tensorflow::OkStatus();
 	}
 
 };

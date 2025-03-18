@@ -24,7 +24,7 @@ Status padding_kernel_cpu(int start, int end, int ndims, int *out_shape, int *st
         }
         padded[i] = tensor[flat];
     }
-    return absl::OkStatus();
+    return tensorflow::OkStatus();
 }
 
 
@@ -51,7 +51,7 @@ struct PaddingFunctor<CPU, T> {
 #else
         padding_kernel_cpu(0, N, out_shape.size(), out_shape.data(), strides.data(), padding.data(), periodic.data(), tensor, padded);
 #endif
-        return absl::OkStatus();
+        return tensorflow::OkStatus();
     }
 };
 
@@ -84,7 +84,7 @@ Status padding_gradient_kernel_cpu(int start, int end, int ndims, int *grad_shap
         out[flat] += grad[i];
         locks[flat].store(false);
     }
-    return absl::OkStatus(); 
+    return tensorflow::OkStatus(); 
 }
 
 template<typename T>
@@ -126,7 +126,7 @@ struct PaddingGradientFunctor<CPU, T> {
 
         delete[] locks;
 
-        return absl::OkStatus();
+        return tensorflow::OkStatus();
     }
 };
 

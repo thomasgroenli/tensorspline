@@ -7,7 +7,7 @@ REGISTER_OP("BSpline")
 .Output("bsx: float32")
 .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
   c->set_output(0,c->input(0));
-  return absl::OkStatus();
+  return tensorflow::OkStatus();
 });
 
 
@@ -52,7 +52,7 @@ REGISTER_OP("SplineGrid")
 
   c->set_output(0, c->MakeShape(out_shape));
 
-  return absl::OkStatus();
+  return tensorflow::OkStatus();
 });
 
 
