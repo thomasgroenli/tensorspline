@@ -11,7 +11,7 @@ To contribute to this project, talk to Thomas Grønli (thomas.gronli@gmail.com)
 Install from the command line with a C/C++ compiler suite installed
 
 ```console
-$ pip install --upgrade git+https://bitbucket.org/ntnuultrasoundgroup/tensorspline.git
+$ pip install git+https://github.com/thomasgroenli/tensorspline
 ```
 
 
