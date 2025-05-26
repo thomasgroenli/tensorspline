@@ -1,10 +1,22 @@
 #pragma once
 #define _USE_MATH_DEFINES
 
+
+#ifdef USE_GPU
+	#define EIGEN_USE_GPU
+	#include "tensorflow/core/util/gpu_kernel_helper.h"
+	#include <cuda.h>
+	#include <nvrtc.h>
+	#include "CudaErrorChecks.h"
+#endif
+
+
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/util/work_sharder.h"
+
+
 
 #include <iostream>
 #include <cmath>
@@ -17,13 +29,6 @@
 #define TF_NEW_ID_FOR_INIT_2(m, c, ...) EXPAND(m(c, __VA_ARGS__))
 #define TF_EXTRACT_KERNEL_NAME_IMPL(m, ...) EXPAND(m(__VA_ARGS__))
 
-
-#ifdef USE_GPU
-	#define EIGEN_USE_GPU
-	#include <cuda.h>
-	#include <nvrtc.h>
-	#include "CudaErrorChecks.h"
-#endif
 
 
 

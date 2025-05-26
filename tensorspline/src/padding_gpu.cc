@@ -212,7 +212,7 @@ struct PaddingFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuLaunchKernel(padding_kernel,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
-			shared_size, NULL,
+			shared_size, context->eigen_device<Eigen::GpuDevice>().stream(),
 			args,
 			0)));
 
@@ -274,7 +274,7 @@ struct PaddingGradientFunctor<GPU, T> {
         TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuLaunchKernel(padding_zero,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
-			0, NULL,
+			0, context->eigen_device<Eigen::GpuDevice>().stream(),
 			zero_args,
 			0)));
 
@@ -293,7 +293,7 @@ struct PaddingGradientFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuLaunchKernel(padding_gradient_kernel,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
-			shared_size, NULL,
+			shared_size, context->eigen_device<Eigen::GpuDevice>().stream(),
 			args,
 			0)));
 

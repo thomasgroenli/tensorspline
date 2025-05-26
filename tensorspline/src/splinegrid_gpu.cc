@@ -212,7 +212,7 @@ struct SplineGridFunctor<GPU, T> {
 		TF_RETURN_IF_ERROR(CudaCheckDriverCall(cuLaunchKernel(kernel,
 			BLOCKS, 1, 1,
 			THREADS, 1, 1,
-			shared_size, NULL,
+			shared_size, context->eigen_device<Eigen::GpuDevice>().stream(),
 			args,
 			0)));
 
